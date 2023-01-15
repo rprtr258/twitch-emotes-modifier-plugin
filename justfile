@@ -6,3 +6,4 @@
 # run sample
 @run:
 	go run main.go 'peepoHappy,snowTime,^'
+	go run cmd/dump/dump.go out.webp

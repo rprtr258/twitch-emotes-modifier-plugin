@@ -96,17 +96,29 @@ func unsafeMergeTimeSeries(first, second []int) []mergedTimestamp {
 	secondOffset := 0
 	for i < len(first) {
 		var m mergedTimestamp
-		if first[i] < second[j]+secondOffset {
+		switch {
+		case first[i] < second[j]+secondOffset:
 			m = mergedTimestamp{
 				timestamp: first[i],
 				frames:    []int{i, j},
 			}
 			i++
-		} else {
+		case first[i] > second[j]+secondOffset:
 			m = mergedTimestamp{
 				timestamp: second[j] + secondOffset,
 				frames:    []int{i, j},
 			}
+			j++
+			if j == len(second) {
+				j = 0
+				secondOffset += second[len(second)-1]
+			}
+		case first[i] == second[j]+secondOffset:
+			m = mergedTimestamp{
+				timestamp: first[i],
+				frames:    []int{i, j},
+			}
+			i++
 			j++
 			if j == len(second) {
 				j = 0
@@ -159,7 +171,12 @@ func run() error {
 	}
 	defer enc.Close()
 
-	for _, ts := range mergedTimestamps {
+	for i, ts := range mergedTimestamps {
+		durationMillis := ts.timestamp
+		if i > 0 {
+			durationMillis -= mergedTimestamps[i-1].timestamp
+		}
+
 		firstFrame := peepoClap.Image[ts.frames[0]]
 		firstFrameCopy := &image.RGBA{
 			Pix:    append([]uint8{}, firstFrame.Pix...),
@@ -168,7 +185,7 @@ func run() error {
 		}
 		secondFrame := snowTime.Image[ts.frames[1]]
 		draw.Draw(firstFrameCopy, firstFrame.Rect, secondFrame, image.Point{}, draw.Over)
-		enc.AddFrame(firstFrameCopy, time.Duration(ts.timestamp)*time.Millisecond)
+		enc.AddFrame(firstFrameCopy, time.Duration(durationMillis)*time.Millisecond)
 	}
 
 	data, err := enc.Assemble()
