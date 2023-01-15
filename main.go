@@ -3,66 +3,14 @@ package main
 import (
 	"fmt"
 	"image"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/tidbyt/go-libwebp/webp"
 )
-
-// // TODO: caching
-// func loadEmoteImage(emoteId string) (image.Image, error) {
-// 	// emoteUrl := fmt.Sprintf("https://cdn.7tv.app/emote/%s/4x", emoteId)
-// 	// resp, err := http.Get(emoteUrl)
-// 	// if err != nil {
-// 	// 	return nil, err
-// 	// }
-// 	// defer resp.Body.Close()
-// 	// imageFormat := resp.Header.Get("Content-type")
-// 	// var extension string
-// 	// switch imageFormat {
-// 	// case "image/webp":
-// 	// 	extension = "webp"
-// 	// default:
-// 	// 	return nil, fmt.Errorf("unknown image format: %s", imageFormat)
-// 	// }
-// 	imageFilename := fmt.Sprintf("%s.%s", emoteId, "webp" /*extension*/)
-// 	// f, err := os.Create(imageFilename)
-// 	// if err != nil {
-// 	// 	return nil, err
-// 	// }
-// 	// defer f.Close()
-// 	// io.Copy(f, resp.Body)
-// 	readF, err := os.Open(imageFilename)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer readF.Close()
-// 	return DecodeWebp(readF)
-// }
-
-// func main() {
-// 	emote := os.Args[1]
-// 	stack := []string{}
-// 	for _, token := range strings.Split(emote, ",") {
-// 		switch token {
-// 		case "^":
-// 			// TODO: assert stack size
-// 			fmt.Println("decoding", stack[len(stack)-2])
-// 			_, err := loadEmoteImage(stack[len(stack)-2])
-// 			if err != nil {
-// 				panic(err)
-// 			}
-// 			// secondEmote, err := loadEmoteImage(stack[len(stack)-2])
-// 			// if err != nil {
-// 			// 	panic(err)
-// 			// }
-// 			// fmt.Println(firstEmote, secondEmote)
-// 		default:
-// 			stack = append(stack, token)
-// 		}
-// 	}
-// }
 
 func loadEmote(filename string) (*webp.Animation, error) {
 	data, err := os.ReadFile(filename)
@@ -82,6 +30,40 @@ func loadEmote(filename string) (*webp.Animation, error) {
 	}
 
 	return anim, nil
+}
+
+func loadEmoteImage(emoteId string) (filename string, err error) {
+	imageFilename := fmt.Sprintf("%s.%s", emoteId, "webp")
+
+	if _, err := os.Stat(imageFilename); os.IsExist(err) {
+		return imageFilename, nil
+	}
+
+	emoteUrl := fmt.Sprintf("https://cdn.7tv.app/emote/%s/4x", emoteId)
+	resp, err := http.Get(emoteUrl)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	// var extension string
+	switch imageFormat := resp.Header.Get("Content-type"); imageFormat {
+	case "image/webp":
+		// extension = "webp"
+	default:
+		return "", fmt.Errorf("unknown image format: %s", imageFormat)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if err := os.WriteFile(imageFilename, data, 0666); err != nil {
+		return "", err
+	}
+
+	return imageFilename, nil
 }
 
 type mergedTimestamp struct {
@@ -148,23 +130,20 @@ func mergeTimeSeries(first, second []int) []mergedTimestamp {
 	return unsafeMergeTimeSeries(first, second)
 }
 
-func run() error {
-	peepoClap, err := loadEmote("peepoClap.webp")
+func over(firstFilename, secondFilename, outFilename string) error {
+	firstImg, err := loadEmote(firstFilename)
 	if err != nil {
 		return err
 	}
 
-	snowTime, err := loadEmote("snowTime.webp")
+	secondImg, err := loadEmote(secondFilename)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(peepoClap.Timestamp)
-	fmt.Println(snowTime.Timestamp)
-	mergedTimestamps := mergeTimeSeries(peepoClap.Timestamp, snowTime.Timestamp)
-	fmt.Println(mergedTimestamps)
+	mergedTimestamps := mergeTimeSeries(firstImg.Timestamp, secondImg.Timestamp)
 
-	enc, err := webp.NewAnimationEncoder(peepoClap.CanvasHeight, peepoClap.CanvasWidth, 0, 0)
+	enc, err := webp.NewAnimationEncoder(firstImg.CanvasHeight, firstImg.CanvasWidth, 0, 0)
 	if err != nil {
 		return err
 	}
@@ -176,8 +155,8 @@ func run() error {
 			durationMillis -= mergedTimestamps[i-1].timestamp
 		}
 
-		firstFrame := peepoClap.Image[ts.frames[0]]
-		secondFrame := snowTime.Image[ts.frames[1]]
+		firstFrame := firstImg.Image[ts.frames[0]]
+		secondFrame := secondImg.Image[ts.frames[1]]
 
 		buf := append([]uint8{}, firstFrame.Pix...)
 		for i := 0; i < len(buf); i += 4 {
@@ -198,7 +177,9 @@ func run() error {
 			Rect:   firstFrame.Rect,
 		}
 
-		enc.AddFrame(firstFrameCopy, time.Duration(durationMillis)*time.Millisecond)
+		if err := enc.AddFrame(firstFrameCopy, time.Duration(durationMillis)*time.Millisecond); err != nil {
+			return nil
+		}
 	}
 
 	data, err := enc.Assemble()
@@ -206,11 +187,36 @@ func run() error {
 		return err
 	}
 
-	if err := os.WriteFile("out.webp", data, 0666); err != nil {
+	if err := os.WriteFile(outFilename, data, 0666); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func run() error {
+	// 	emote := os.Args[1]
+	// 	stack := []string{}
+	// 	for _, token := range strings.Split(emote, ",") {
+	// 		switch token {
+	// 		case "^":
+	// 			// TODO: assert stack size
+	// 			fmt.Println("decoding", stack[len(stack)-2])
+	// 			_, err := loadEmoteImage(stack[len(stack)-2])
+	// 			if err != nil {
+	// 				panic(err)
+	// 			}
+	// 			// secondEmote, err := loadEmoteImage(stack[len(stack)-2])
+	// 			// if err != nil {
+	// 			// 	panic(err)
+	// 			// }
+	// 			// fmt.Println(firstEmote, secondEmote)
+	// 		default:
+	// 			stack = append(stack, token)
+	// 		}
+	// 	}
+
+	return over("peepoClap.webp", "snowTime.webp", "out.webp")
 }
 
 func main() {
