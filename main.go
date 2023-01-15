@@ -2,8 +2,11 @@ package main
 
 import (
 	"fmt"
+	"image"
+	"image/draw"
 	"log"
 	"os"
+	"time"
 
 	"github.com/tidbyt/go-libwebp/webp"
 )
@@ -84,8 +87,7 @@ func loadEmote(filename string) (*webp.Animation, error) {
 
 type mergedTimestamp struct {
 	timestamp int
-	which     int
-	frame     int
+	frames    []int
 }
 
 func unsafeMergeTimeSeries(first, second []int) []mergedTimestamp {
@@ -97,15 +99,13 @@ func unsafeMergeTimeSeries(first, second []int) []mergedTimestamp {
 		if first[i] < second[j]+secondOffset {
 			m = mergedTimestamp{
 				timestamp: first[i],
-				which:     0,
-				frame:     i,
+				frames:    []int{i, j},
 			}
 			i++
 		} else {
 			m = mergedTimestamp{
 				timestamp: second[j] + secondOffset,
-				which:     1,
-				frame:     j,
+				frames:    []int{i, j},
 			}
 			j++
 			if j == len(second) {
@@ -126,7 +126,10 @@ func mergeTimeSeries(first, second []int) []mergedTimestamp {
 	if first[len(first)-1] < second[len(second)-1] {
 		res := unsafeMergeTimeSeries(second, first)
 		for i := range res {
-			res[i].which = 1 - res[i].which
+			res[i].frames = []int{
+				res[i].frames[1],
+				res[i].frames[0],
+			}
 		}
 		return res
 	}
@@ -147,7 +150,30 @@ func run() error {
 
 	fmt.Println(peepoClap.Timestamp)
 	fmt.Println(snowTime.Timestamp)
-	fmt.Println(mergeTimeSeries(peepoClap.Timestamp, snowTime.Timestamp))
+	mergedTimestamps := mergeTimeSeries(peepoClap.Timestamp, snowTime.Timestamp)
+	fmt.Println(mergedTimestamps)
+
+	enc, err := webp.NewAnimationEncoder(peepoClap.CanvasHeight, peepoClap.CanvasWidth, 0, 0)
+	if err != nil {
+		return err
+	}
+	defer enc.Close()
+
+	for _, ts := range mergedTimestamps {
+		firstFrame := peepoClap.Image[ts.frames[0]]
+		secondFrame := snowTime.Image[ts.frames[1]]
+		draw.Draw(firstFrame, firstFrame.Rect, secondFrame, image.Point{}, draw.Over)
+		enc.AddFrame(firstFrame, time.Duration(ts.timestamp)*time.Millisecond)
+	}
+
+	data, err := enc.Assemble()
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile("out.webp", data, 0666); err != nil {
+		return err
+	}
 
 	return nil
 }
