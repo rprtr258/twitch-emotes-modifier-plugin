@@ -98,12 +98,14 @@ func unsafeMergeTimeSeries(first, second []int) []mergedTimestamp {
 			m = mergedTimestamp{
 				timestamp: first[i],
 				which:     0,
+				frame:     i,
 			}
 			i++
 		} else {
 			m = mergedTimestamp{
 				timestamp: second[j] + secondOffset,
 				which:     1,
+				frame:     j,
 			}
 			j++
 			if j == len(second) {
@@ -122,7 +124,11 @@ func mergeTimeSeries(first, second []int) []mergedTimestamp {
 	}
 
 	if first[len(first)-1] < second[len(second)-1] {
-		return unsafeMergeTimeSeries(second, first)
+		res := unsafeMergeTimeSeries(second, first)
+		for i := range res {
+			res[i].which = 1 - res[i].which
+		}
+		return res
 	}
 
 	return unsafeMergeTimeSeries(first, second)
