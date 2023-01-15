@@ -261,16 +261,14 @@ func (m reverseModifier) modify() (*webp.AnimationEncoder, error) {
 	return enc, nil
 }
 
-func reverse(inID, outID string) error {
+func unaryModifier(inID, outID string, construct func(*webp.Animation) modifier) error {
 	img, err := loadEmote(inID)
 	if err != nil {
 		return err
 	}
 
 	return runModifier(
-		reverseModifier{
-			in: img,
-		},
+		construct(img),
 		outID,
 	)
 }
@@ -307,7 +305,15 @@ func run() error {
 			// TODO: maybe use hash instead?
 			newEmote := fmt.Sprintf("%s>rev", emote)
 
-			if err := reverse(emote, newEmote); err != nil {
+			if err := unaryModifier(
+				emote,
+				newEmote,
+				func(in *webp.Animation) modifier {
+					return reverseModifier{
+						in: in,
+					}
+				},
+			); err != nil {
 				return err
 			}
 
