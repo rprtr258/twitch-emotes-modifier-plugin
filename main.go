@@ -143,34 +143,23 @@ func mergeTimeSeries(first, second []int) []mergedTimestamp {
 	return unsafeMergeTimeSeries(first, second)
 }
 
-func over(firstFilename, secondFilename, outFilename string) error {
-	firstImg, err := loadEmote(firstFilename)
+func overModifier(first, second *webp.Animation) (*webp.AnimationEncoder, error) {
+	mergedTimestamps := mergeTimeSeries(first.Timestamp, second.Timestamp)
+
+	enc, err := webp.NewAnimationEncoder(first.CanvasHeight, first.CanvasWidth, 0, 0)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	secondImg, err := loadEmote(secondFilename)
-	if err != nil {
-		return err
-	}
-
-	mergedTimestamps := mergeTimeSeries(firstImg.Timestamp, secondImg.Timestamp)
-
-	enc, err := webp.NewAnimationEncoder(firstImg.CanvasHeight, firstImg.CanvasWidth, 0, 0)
-	if err != nil {
-		return err
-	}
-	defer enc.Close()
-
-	buf := make([]uint8, len(firstImg.Image[0].Pix))
+	buf := make([]uint8, len(first.Image[0].Pix))
 	for i, ts := range mergedTimestamps {
 		durationMillis := ts.timestamp
 		if i > 0 {
 			durationMillis -= mergedTimestamps[i-1].timestamp
 		}
 
-		firstFrame := firstImg.Image[ts.frames[0]]
-		secondFrame := secondImg.Image[ts.frames[1]]
+		firstFrame := first.Image[ts.frames[0]]
+		secondFrame := second.Image[ts.frames[1]]
 
 		buf := append(buf[:0], firstFrame.Pix...)
 		for i := 0; i < len(buf); i += 4 {
@@ -192,9 +181,30 @@ func over(firstFilename, secondFilename, outFilename string) error {
 		}
 
 		if err := enc.AddFrame(firstFrameCopy, time.Duration(durationMillis)*time.Millisecond); err != nil {
-			return nil
+			return nil, err
 		}
 	}
+
+	return enc, nil
+}
+
+func over(firstFilename, secondFilename, outFilename string) error {
+	firstImg, err := loadEmote(firstFilename)
+	if err != nil {
+		return err
+	}
+
+	secondImg, err := loadEmote(secondFilename)
+	if err != nil {
+		return err
+	}
+
+	enc, err := overModifier(firstImg, secondImg)
+	if err != nil {
+		enc.Close()
+		return err
+	}
+	defer enc.Close()
 
 	data, err := enc.Assemble()
 	if err != nil {
