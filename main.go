@@ -82,6 +82,46 @@ func loadEmote(filename string) (*webp.Animation, error) {
 	return anim, nil
 }
 
+type mergedTimestamp struct {
+	timestamp int
+	which     int
+	frame     int
+}
+
+func mergeTimeSeries(first, second []int) []mergedTimestamp {
+	if len(first) == 0 || len(second) == 0 {
+		panic("time series must not be empty")
+	}
+
+	if first[len(first)-1] < second[len(second)-1] {
+		return mergeTimeSeries(second, first)
+	}
+
+	res := make([]mergedTimestamp, 0, len(first)+len(second))
+	i, j := 0, 0
+	secondOffset := 0
+	for i < len(first) {
+		var m mergedTimestamp
+		if first[i] < second[j]+secondOffset {
+			m = mergedTimestamp{
+				timestamp: first[i],
+			}
+			i++
+		} else {
+			m = mergedTimestamp{
+				timestamp: second[j] + secondOffset,
+			}
+			j++
+			if j == len(second) {
+				j = 0
+				secondOffset += second[len(second)-1]
+			}
+		}
+		res = append(res, m)
+	}
+	return res
+}
+
 func run() error {
 	peepoClap, err := loadEmote("peepoClap.webp")
 	if err != nil {
@@ -93,7 +133,9 @@ func run() error {
 		return err
 	}
 
-	fmt.Println(peepoClap.Timestamp, snowTime.Timestamp)
+	fmt.Println(peepoClap.Timestamp)
+	fmt.Println(snowTime.Timestamp)
+	fmt.Println(mergeTimeSeries(peepoClap.Timestamp, snowTime.Timestamp))
 
 	return nil
 }
