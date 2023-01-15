@@ -188,6 +188,9 @@ func run() error {
 				b := int32(secondFrame.Pix[i+j])
 				buf[i+j] = uint8((a*(255-alpha) + b*alpha) / 255)
 			}
+			if uint8(alpha) > buf[i+3] {
+				buf[i+3] = uint8(alpha)
+			}
 		}
 		firstFrameCopy := &image.RGBA{
 			Pix:    buf,
