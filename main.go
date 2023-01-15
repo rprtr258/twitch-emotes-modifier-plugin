@@ -90,6 +90,37 @@ func loadEmoteFilename(emoteId string) (filename string, err error) {
 	return emoteId, nil
 }
 
+func unaryModifier(
+	inID, outID string,
+	construct func(*webp.Animation) modifier,
+) error {
+	img, err := loadEmote(inID)
+	if err != nil {
+		return err
+	}
+
+	m := construct(img)
+	return runModifier(m, outID)
+}
+
+func binaryModifier(
+	firstID, secondID, outID string,
+	construct func(a, b *webp.Animation) modifier,
+) error {
+	firstImg, err := loadEmote(firstID)
+	if err != nil {
+		return err
+	}
+
+	secondImg, err := loadEmote(secondID)
+	if err != nil {
+		return err
+	}
+
+	m := construct(firstImg, secondImg)
+	return runModifier(m, outID)
+}
+
 type mergedTimestamp struct {
 	timestamp int
 	frames    []int
@@ -216,26 +247,6 @@ func (m overModifier) modify() (*webp.AnimationEncoder, error) {
 	return enc, nil
 }
 
-func over(firstID, secondID, outID string) error {
-	firstImg, err := loadEmote(firstID)
-	if err != nil {
-		return err
-	}
-
-	secondImg, err := loadEmote(secondID)
-	if err != nil {
-		return err
-	}
-
-	return runModifier(
-		overModifier{
-			first:  firstImg,
-			second: secondImg,
-		},
-		outID,
-	)
-}
-
 type reverseModifier struct {
 	in *webp.Animation
 }
@@ -259,18 +270,6 @@ func (m reverseModifier) modify() (*webp.AnimationEncoder, error) {
 	}
 
 	return enc, nil
-}
-
-func unaryModifier(inID, outID string, construct func(*webp.Animation) modifier) error {
-	img, err := loadEmote(inID)
-	if err != nil {
-		return err
-	}
-
-	return runModifier(
-		construct(img),
-		outID,
-	)
 }
 
 type stack []string
@@ -336,7 +335,17 @@ func run() error {
 
 			newEmote := fmt.Sprintf("%s,%s>over", first, second)
 			// TODO: do not re-evaluate if already exists (cache)
-			if err := over(firstEmote, secondEmote, newEmote); err != nil {
+			if err := binaryModifier(
+				firstEmote,
+				secondEmote,
+				newEmote,
+				func(a, b *webp.Animation) modifier {
+					return overModifier{
+						first:  a,
+						second: b,
+					}
+				},
+			); err != nil {
 				return err
 			}
 
