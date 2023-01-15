@@ -161,9 +161,14 @@ func run() error {
 
 	for _, ts := range mergedTimestamps {
 		firstFrame := peepoClap.Image[ts.frames[0]]
+		firstFrameCopy := &image.RGBA{
+			Pix:    append([]uint8{}, firstFrame.Pix...),
+			Stride: firstFrame.Stride,
+			Rect:   firstFrame.Rect,
+		}
 		secondFrame := snowTime.Image[ts.frames[1]]
-		draw.Draw(firstFrame, firstFrame.Rect, secondFrame, image.Point{}, draw.Over)
-		enc.AddFrame(firstFrame, time.Duration(ts.timestamp)*time.Millisecond)
+		draw.Draw(firstFrameCopy, firstFrame.Rect, secondFrame, image.Point{}, draw.Over)
+		enc.AddFrame(firstFrameCopy, time.Duration(ts.timestamp)*time.Millisecond)
 	}
 
 	data, err := enc.Assemble()
