@@ -174,7 +174,7 @@ func over(firstFilename, secondFilename, outFilename string) error {
 
 		buf := append(buf[:0], firstFrame.Pix...)
 		for i := 0; i < len(buf); i += 4 {
-			// TODO: https://stackoverflow.com/questions/41093527/how-to-blend-two-rgb-unsigned-byte-colors-stored-as-unsigned-32bit-ints-fast
+			// TODO(OPTIMIZE): https://stackoverflow.com/questions/41093527/how-to-blend-two-rgb-unsigned-byte-colors-stored-as-unsigned-32bit-ints-fast
 			alpha := int32(secondFrame.Pix[i+3])
 			for j := 0; j < 3; j++ {
 				a := int32(buf[i+j])
