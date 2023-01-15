@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/tidbyt/go-libwebp/webp"
@@ -195,38 +196,61 @@ func over(firstFilename, secondFilename, outFilename string) error {
 	return nil
 }
 
+type stack []string
+
+func (s *stack) push(elem string) {
+	*s = append(*s, elem)
+}
+
+func (s *stack) pop() string {
+	if len(*s) == 0 {
+		panic("can't pop from empty stack")
+	}
+
+	res := (*s)[len(*s)-1]
+	*s = (*s)[:len(*s)-1]
+	return res
+}
+
 func run() error {
-	// 	emote := os.Args[1]
-	// 	stack := []string{}
-	// 	for _, token := range strings.Split(emote, ",") {
-	// 		switch token {
-	// 		case "^":
-	// 			// TODO: assert stack size
-	// 			fmt.Println("decoding", stack[len(stack)-2])
-	// 			_, err := loadEmoteImage(stack[len(stack)-2])
-	// 			if err != nil {
-	// 				panic(err)
-	// 			}
-	// 			// secondEmote, err := loadEmoteImage(stack[len(stack)-2])
-	// 			// if err != nil {
-	// 			// 	panic(err)
-	// 			// }
-	// 			// fmt.Println(firstEmote, secondEmote)
-	// 		default:
-	// 			stack = append(stack, token)
-	// 		}
-	// 	}
-	peepoClapFilename, err := loadEmoteFilename(os.Args[1])
-	if err != nil {
-		return err
+	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|,)`)
+	stack := stack([]string{})
+	for _, token := range tokenRE.FindAllString(os.Args[1], -1) {
+		fmt.Println(token)
+		switch token {
+		case ",":
+		case ">over":
+			first := stack.pop()
+			second := stack.pop()
+
+			// TODO: assert stack size
+			// TODO: load only if id
+			firstEmote, err := loadEmoteFilename(first)
+			if err != nil {
+				return err
+			}
+
+			secondEmote, err := loadEmoteFilename(second)
+			if err != nil {
+				return err
+			}
+
+			newEmote := fmt.Sprintf("%s,%s>over.webp", firstEmote, secondEmote)
+			if err := over(firstEmote, secondEmote, newEmote); err != nil {
+				return err
+			}
+
+			stack.push(newEmote)
+		default:
+			stack.push(token)
+		}
 	}
 
-	snowTimeFilename, err := loadEmoteFilename(os.Args[2])
-	if err != nil {
-		return err
+	if len(stack) != 1 {
+		return fmt.Errorf("stack has more than single item (or none): %v", stack)
 	}
 
-	return over(peepoClapFilename, snowTimeFilename, "out.webp")
+	return nil
 }
 
 func main() {
