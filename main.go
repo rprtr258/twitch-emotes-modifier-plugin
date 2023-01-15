@@ -13,6 +13,29 @@ import (
 	"github.com/tidbyt/go-libwebp/webp"
 )
 
+type modifier interface {
+	modify() (*webp.AnimationEncoder, error)
+}
+
+func runModifier(m modifier, outID string) error {
+	enc, err := m.modify()
+	if err != nil {
+		return err
+	}
+	defer enc.Close()
+
+	data, err := enc.Assemble()
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(outID+".webp", data, 0666); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func loadEmote(id string) (*webp.Animation, error) {
 	data, err := os.ReadFile(id + ".webp")
 	if err != nil {
@@ -143,23 +166,27 @@ func mergeTimeSeries(first, second []int) []mergedTimestamp {
 	return unsafeMergeTimeSeries(first, second)
 }
 
-func overModifier(first, second *webp.Animation) (*webp.AnimationEncoder, error) {
-	mergedTimestamps := mergeTimeSeries(first.Timestamp, second.Timestamp)
+type overModifier struct {
+	first, second *webp.Animation
+}
 
-	enc, err := webp.NewAnimationEncoder(first.CanvasHeight, first.CanvasWidth, 0, 0)
+func (m overModifier) modify() (*webp.AnimationEncoder, error) {
+	mergedTimestamps := mergeTimeSeries(m.first.Timestamp, m.second.Timestamp)
+
+	enc, err := webp.NewAnimationEncoder(m.first.CanvasHeight, m.first.CanvasWidth, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	buf := make([]uint8, len(first.Image[0].Pix))
+	buf := make([]uint8, len(m.first.Image[0].Pix))
 	for i, ts := range mergedTimestamps {
 		durationMillis := ts.timestamp
 		if i > 0 {
 			durationMillis -= mergedTimestamps[i-1].timestamp
 		}
 
-		firstFrame := first.Image[ts.frames[0]]
-		secondFrame := second.Image[ts.frames[1]]
+		firstFrame := m.first.Image[ts.frames[0]]
+		secondFrame := m.second.Image[ts.frames[1]]
 
 		buf := append(buf[:0], firstFrame.Pix...)
 		for i := 0; i < len(buf); i += 4 {
@@ -181,6 +208,7 @@ func overModifier(first, second *webp.Animation) (*webp.AnimationEncoder, error)
 		}
 
 		if err := enc.AddFrame(firstFrameCopy, time.Duration(durationMillis)*time.Millisecond); err != nil {
+			enc.Close()
 			return nil, err
 		}
 	}
@@ -188,7 +216,7 @@ func overModifier(first, second *webp.Animation) (*webp.AnimationEncoder, error)
 	return enc, nil
 }
 
-func over(firstID, secondID, outFilename string) error {
+func over(firstID, secondID, outID string) error {
 	firstImg, err := loadEmote(firstID)
 	if err != nil {
 		return err
@@ -199,38 +227,33 @@ func over(firstID, secondID, outFilename string) error {
 		return err
 	}
 
-	enc, err := overModifier(firstImg, secondImg)
-	if err != nil {
-		enc.Close()
-		return err
-	}
-	defer enc.Close()
-
-	data, err := enc.Assemble()
-	if err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(outFilename+".webp", data, 0666); err != nil {
-		return err
-	}
-
-	return nil
+	return runModifier(
+		overModifier{
+			first:  firstImg,
+			second: secondImg,
+		},
+		outID,
+	)
 }
 
-func reverseModifier(img *webp.Animation) (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(img.CanvasWidth, img.CanvasHeight, 0, 0)
+type reverseModifier struct {
+	in *webp.Animation
+}
+
+func (m reverseModifier) modify() (*webp.AnimationEncoder, error) {
+	enc, err := webp.NewAnimationEncoder(m.in.CanvasWidth, m.in.CanvasHeight, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	for i := img.FrameCount - 1; i >= 0; i-- {
-		durationMillis := img.Timestamp[i]
+	for i := m.in.FrameCount - 1; i >= 0; i-- {
+		durationMillis := m.in.Timestamp[i]
 		if i > 0 {
-			durationMillis -= img.Timestamp[i-1]
+			durationMillis -= m.in.Timestamp[i-1]
 		}
 
-		if err := enc.AddFrame(img.Image[i], time.Duration(durationMillis)*time.Millisecond); err != nil {
+		if err := enc.AddFrame(m.in.Image[i], time.Duration(durationMillis)*time.Millisecond); err != nil {
+			enc.Close()
 			return nil, err
 		}
 	}
@@ -244,23 +267,12 @@ func reverse(inID, outID string) error {
 		return err
 	}
 
-	enc, err := reverseModifier(img)
-	if err != nil {
-		enc.Close()
-		return err
-	}
-	defer enc.Close()
-
-	data, err := enc.Assemble()
-	if err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(outID+".webp", data, 0666); err != nil {
-		return err
-	}
-
-	return nil
+	return runModifier(
+		reverseModifier{
+			in: img,
+		},
+		outID,
+	)
 }
 
 type stack []string
