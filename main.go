@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"image"
-	"image/draw"
 	"log"
 	"os"
 	"time"
@@ -178,13 +177,24 @@ func run() error {
 		}
 
 		firstFrame := peepoClap.Image[ts.frames[0]]
+		secondFrame := snowTime.Image[ts.frames[1]]
+
+		buf := append([]uint8{}, firstFrame.Pix...)
+		for i := 0; i < len(buf); i += 4 {
+			// TODO: https://stackoverflow.com/questions/41093527/how-to-blend-two-rgb-unsigned-byte-colors-stored-as-unsigned-32bit-ints-fast
+			alpha := int32(secondFrame.Pix[i+3])
+			for j := 0; j < 3; j++ {
+				a := int32(buf[i+j])
+				b := int32(secondFrame.Pix[i+j])
+				buf[i+j] = uint8((a*(255-alpha) + b*alpha) / 255)
+			}
+		}
 		firstFrameCopy := &image.RGBA{
-			Pix:    append([]uint8{}, firstFrame.Pix...),
+			Pix:    buf,
 			Stride: firstFrame.Stride,
 			Rect:   firstFrame.Rect,
 		}
-		secondFrame := snowTime.Image[ts.frames[1]]
-		draw.Draw(firstFrameCopy, firstFrame.Rect, secondFrame, image.Point{}, draw.Over)
+
 		enc.AddFrame(firstFrameCopy, time.Duration(durationMillis)*time.Millisecond)
 	}
 
