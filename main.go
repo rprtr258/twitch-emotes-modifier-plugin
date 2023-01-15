@@ -88,15 +88,7 @@ type mergedTimestamp struct {
 	frame     int
 }
 
-func mergeTimeSeries(first, second []int) []mergedTimestamp {
-	if len(first) == 0 || len(second) == 0 {
-		panic("time series must not be empty")
-	}
-
-	if first[len(first)-1] < second[len(second)-1] {
-		return mergeTimeSeries(second, first)
-	}
-
+func unsafeMergeTimeSeries(first, second []int) []mergedTimestamp {
 	res := make([]mergedTimestamp, 0, len(first)+len(second))
 	i, j := 0, 0
 	secondOffset := 0
@@ -105,11 +97,13 @@ func mergeTimeSeries(first, second []int) []mergedTimestamp {
 		if first[i] < second[j]+secondOffset {
 			m = mergedTimestamp{
 				timestamp: first[i],
+				which:     0,
 			}
 			i++
 		} else {
 			m = mergedTimestamp{
 				timestamp: second[j] + secondOffset,
+				which:     1,
 			}
 			j++
 			if j == len(second) {
@@ -120,6 +114,18 @@ func mergeTimeSeries(first, second []int) []mergedTimestamp {
 		res = append(res, m)
 	}
 	return res
+}
+
+func mergeTimeSeries(first, second []int) []mergedTimestamp {
+	if len(first) == 0 || len(second) == 0 {
+		panic("time series must not be empty")
+	}
+
+	if first[len(first)-1] < second[len(second)-1] {
+		return unsafeMergeTimeSeries(second, first)
+	}
+
+	return unsafeMergeTimeSeries(first, second)
 }
 
 func run() error {
