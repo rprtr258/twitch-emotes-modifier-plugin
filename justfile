@@ -29,3 +29,8 @@
 # run reverseY(diesfromcringe) sample
 @run-revy:
 	go run main.go '611523959bf574f1fded6d72>revy'
+
+# run concat(diesfromcringe, reverseTime(diesofcringe)) sample
+@run-concat:
+	go run main.go '611523959bf574f1fded6d72,611523959bf574f1fded6d72>revt>concat'
+

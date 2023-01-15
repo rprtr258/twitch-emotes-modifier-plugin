@@ -197,6 +197,43 @@ func mergeTimeSeries(first, second []int) []mergedTimestamp {
 	return unsafeMergeTimeSeries(first, second)
 }
 
+type concatModifier struct {
+	first, second *webp.Animation
+}
+
+func (m concatModifier) append(enc *webp.AnimationEncoder, img *webp.Animation) error {
+	for i, frame := range img.Image {
+		durationMillis := img.Timestamp[i]
+		if i > 0 {
+			durationMillis -= img.Timestamp[i-1]
+		}
+
+		if err := enc.AddFrame(frame, time.Duration(durationMillis)*time.Millisecond); err != nil {
+			enc.Close()
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m concatModifier) modify() (*webp.AnimationEncoder, error) {
+	enc, err := webp.NewAnimationEncoder(m.first.CanvasWidth, m.first.CanvasHeight, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := m.append(enc, m.first); err != nil {
+		return nil, err
+	}
+
+	if err := m.append(enc, m.second); err != nil {
+		return nil, err
+	}
+
+	return enc, nil
+}
+
 type overModifier struct {
 	first, second *webp.Animation
 }
@@ -421,15 +458,8 @@ func binaryTokenHandler(
 	newEmote := fmt.Sprintf("%s,%s%s", first, second, suffix)
 	// TODO: do not re-evaluate if already exists (cache)
 	if err := binaryModifier(
-		firstEmote,
-		secondEmote,
-		newEmote,
-		func(a, b *webp.Animation) modifier {
-			return overModifier{
-				first:  a,
-				second: b,
-			}
-		},
+		firstEmote, secondEmote, newEmote,
+		construct,
 	); err != nil {
 		return err
 	}
@@ -440,7 +470,7 @@ func binaryTokenHandler(
 }
 
 func run() error {
-	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|>revt|>revx|>revy|,)`)
+	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|>revt|>revx|>revy|>concat|,)`)
 	stack := stack([]string{})
 	// TODO: assert all characters are used in tokenizing
 	for _, token := range tokenRE.FindAllString(os.Args[1], -1) {
@@ -489,6 +519,19 @@ func run() error {
 				token,
 				func(a, b *webp.Animation) modifier {
 					return overModifier{
+						first:  a,
+						second: b,
+					}
+				},
+			); err != nil {
+				return err
+			}
+		case ">concat":
+			if err := binaryTokenHandler(
+				&stack,
+				token,
+				func(a, b *webp.Animation) modifier {
+					return concatModifier{
 						first:  a,
 						second: b,
 					}
