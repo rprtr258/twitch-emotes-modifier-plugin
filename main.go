@@ -32,7 +32,7 @@ func loadEmote(filename string) (*webp.Animation, error) {
 	return anim, nil
 }
 
-func loadEmoteImage(emoteId string) (filename string, err error) {
+func loadEmoteFilename(emoteId string) (filename string, err error) {
 	imageFilename := fmt.Sprintf("%s.%s", emoteId, "webp")
 
 	if _, err := os.Stat(imageFilename); os.IsExist(err) {
@@ -149,6 +149,7 @@ func over(firstFilename, secondFilename, outFilename string) error {
 	}
 	defer enc.Close()
 
+	buf := make([]uint8, len(firstImg.Image[0].Pix))
 	for i, ts := range mergedTimestamps {
 		durationMillis := ts.timestamp
 		if i > 0 {
@@ -158,7 +159,7 @@ func over(firstFilename, secondFilename, outFilename string) error {
 		firstFrame := firstImg.Image[ts.frames[0]]
 		secondFrame := secondImg.Image[ts.frames[1]]
 
-		buf := append([]uint8{}, firstFrame.Pix...)
+		buf := append(buf[:0], firstFrame.Pix...)
 		for i := 0; i < len(buf); i += 4 {
 			// TODO: https://stackoverflow.com/questions/41093527/how-to-blend-two-rgb-unsigned-byte-colors-stored-as-unsigned-32bit-ints-fast
 			alpha := int32(secondFrame.Pix[i+3])
@@ -215,8 +216,17 @@ func run() error {
 	// 			stack = append(stack, token)
 	// 		}
 	// 	}
+	peepoClapFilename, err := loadEmoteFilename(os.Args[1])
+	if err != nil {
+		return err
+	}
 
-	return over("peepoClap.webp", "snowTime.webp", "out.webp")
+	snowTimeFilename, err := loadEmoteFilename(os.Args[2])
+	if err != nil {
+		return err
+	}
+
+	return over(peepoClapFilename, snowTimeFilename, "out.webp")
 }
 
 func main() {
