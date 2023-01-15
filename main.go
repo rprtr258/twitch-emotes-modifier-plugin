@@ -13,8 +13,8 @@ import (
 	"github.com/tidbyt/go-libwebp/webp"
 )
 
-func loadEmote(filename string) (*webp.Animation, error) {
-	data, err := os.ReadFile(filename)
+func loadEmote(id string) (*webp.Animation, error) {
+	data, err := os.ReadFile(id + ".webp")
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func loadEmoteFilename(emoteId string) (filename string, err error) {
 	imageFilename := fmt.Sprintf("%s.%s", emoteId, "webp")
 
 	if _, err := os.Stat(imageFilename); err == nil {
-		return imageFilename, nil
+		return emoteId, nil
 	}
 
 	emoteUrl := fmt.Sprintf("https://cdn.7tv.app/emote/%s/4x", emoteId)
@@ -64,7 +64,7 @@ func loadEmoteFilename(emoteId string) (filename string, err error) {
 		return "", err
 	}
 
-	return imageFilename, nil
+	return emoteId, nil
 }
 
 type mergedTimestamp struct {
@@ -218,17 +218,11 @@ func over(firstFilename, secondFilename, outFilename string) error {
 	return nil
 }
 
-func reverse(emoteFilename, outFilename string) error {
-	img, err := loadEmote(emoteFilename)
-	if err != nil {
-		return err
-	}
-
+func reverseModifier(img *webp.Animation) (*webp.AnimationEncoder, error) {
 	enc, err := webp.NewAnimationEncoder(img.CanvasWidth, img.CanvasHeight, 0, 0)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer enc.Close()
 
 	for i := img.FrameCount - 1; i >= 0; i-- {
 		durationMillis := img.Timestamp[i]
@@ -237,9 +231,25 @@ func reverse(emoteFilename, outFilename string) error {
 		}
 
 		if err := enc.AddFrame(img.Image[i], time.Duration(durationMillis)*time.Millisecond); err != nil {
-			return err
+			return nil, err
 		}
 	}
+
+	return enc, nil
+}
+
+func reverse(emoteFilename, outFilename string) error {
+	img, err := loadEmote(emoteFilename)
+	if err != nil {
+		return err
+	}
+
+	enc, err := reverseModifier(img)
+	if err != nil {
+		enc.Close()
+		return err
+	}
+	defer enc.Close()
 
 	data, err := enc.Assemble()
 	if err != nil {
