@@ -375,6 +375,25 @@ func (s *stack) pop() string {
 	return res
 }
 
+func unaryTokenHandler(stack stack, suffix string, construct func(*webp.Animation) modifier) error {
+	arg := stack.pop()
+	emote, err := loadEmoteFilename(arg)
+	if err != nil {
+		return err
+	}
+
+	// TODO: maybe use hash instead?
+	newEmote := fmt.Sprintf("%s%s", emote, suffix)
+
+	if err := unaryModifier(emote, newEmote, construct); err != nil {
+		return err
+	}
+
+	stack.push(newEmote)
+
+	return nil
+}
+
 func run() error {
 	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|>revt|>revx|>revy|,)`)
 	stack := stack([]string{})
@@ -384,18 +403,9 @@ func run() error {
 		switch token {
 		case ",":
 		case ">revx":
-			arg := stack.pop()
-			emote, err := loadEmoteFilename(arg)
-			if err != nil {
-				return err
-			}
-
-			// TODO: maybe use hash instead?
-			newEmote := fmt.Sprintf("%s>revx", emote)
-
-			if err := unaryModifier(
-				emote,
-				newEmote,
+			if err := unaryTokenHandler(
+				stack,
+				token,
 				func(in *webp.Animation) modifier {
 					return reverseXModifier{
 						in: in,
@@ -404,21 +414,10 @@ func run() error {
 			); err != nil {
 				return err
 			}
-
-			stack.push(newEmote)
 		case ">revy":
-			arg := stack.pop()
-			emote, err := loadEmoteFilename(arg)
-			if err != nil {
-				return err
-			}
-
-			// TODO: maybe use hash instead?
-			newEmote := fmt.Sprintf("%s>revy", emote)
-
-			if err := unaryModifier(
-				emote,
-				newEmote,
+			if err := unaryTokenHandler(
+				stack,
+				token,
 				func(in *webp.Animation) modifier {
 					return reverseYModifier{
 						in: in,
@@ -427,21 +426,10 @@ func run() error {
 			); err != nil {
 				return err
 			}
-
-			stack.push(newEmote)
 		case ">revt":
-			arg := stack.pop()
-			emote, err := loadEmoteFilename(arg)
-			if err != nil {
-				return err
-			}
-
-			// TODO: maybe use hash instead?
-			newEmote := fmt.Sprintf("%s>revt", emote)
-
-			if err := unaryModifier(
-				emote,
-				newEmote,
+			if err := unaryTokenHandler(
+				stack,
+				token,
 				func(in *webp.Animation) modifier {
 					return reverseModifier{
 						in: in,
@@ -450,8 +438,6 @@ func run() error {
 			); err != nil {
 				return err
 			}
-
-			stack.push(newEmote)
 		case ">over":
 			second := stack.pop()
 			first := stack.pop()
