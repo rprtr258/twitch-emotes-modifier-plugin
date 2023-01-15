@@ -188,13 +188,13 @@ func overModifier(first, second *webp.Animation) (*webp.AnimationEncoder, error)
 	return enc, nil
 }
 
-func over(firstFilename, secondFilename, outFilename string) error {
-	firstImg, err := loadEmote(firstFilename)
+func over(firstID, secondID, outFilename string) error {
+	firstImg, err := loadEmote(firstID)
 	if err != nil {
 		return err
 	}
 
-	secondImg, err := loadEmote(secondFilename)
+	secondImg, err := loadEmote(secondID)
 	if err != nil {
 		return err
 	}
@@ -238,8 +238,8 @@ func reverseModifier(img *webp.Animation) (*webp.AnimationEncoder, error) {
 	return enc, nil
 }
 
-func reverse(emoteFilename, outFilename string) error {
-	img, err := loadEmote(emoteFilename)
+func reverse(inID, outID string) error {
+	img, err := loadEmote(inID)
 	if err != nil {
 		return err
 	}
@@ -256,7 +256,7 @@ func reverse(emoteFilename, outFilename string) error {
 		return err
 	}
 
-	if err := os.WriteFile(outFilename+".webp", data, 0666); err != nil {
+	if err := os.WriteFile(outID+".webp", data, 0666); err != nil {
 		return err
 	}
 
