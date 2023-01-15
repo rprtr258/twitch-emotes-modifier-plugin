@@ -6,6 +6,10 @@
 @dump:
 	ls *.webp | xargs go run cmd/dump/dump.go
 
+# run trollDespair(static),cage(static) sample
+@run-despair-cage:
+	go run main.go '603caea243b9e100141caf4f,612b180e8560641da7250ce8>over'
+
 # run trollDespair(static),snowTime(animated) sample
 @run-despair-snow:
 	go run main.go '603caea243b9e100141caf4f,6129ea8afd97806f9d734a76>over'
