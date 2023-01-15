@@ -272,6 +272,93 @@ func (m reverseModifier) modify() (*webp.AnimationEncoder, error) {
 	return enc, nil
 }
 
+type reverseXModifier struct {
+	// TODO: embed?
+	in *webp.Animation
+}
+
+func (m reverseXModifier) modify() (*webp.AnimationEncoder, error) {
+	enc, err := webp.NewAnimationEncoder(m.in.CanvasWidth, m.in.CanvasHeight, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < m.in.FrameCount; i++ {
+		durationMillis := m.in.Timestamp[i]
+		if i > 0 {
+			durationMillis -= m.in.Timestamp[i-1]
+		}
+
+		frame := m.in.Image[i]
+
+		buf := append([]uint8{}, frame.Pix...)
+		for row := 0; row < m.in.CanvasHeight; row++ {
+			stride := row * frame.Stride
+			for i, j := 0, frame.Stride-4; i < j; i, j = i+4, j-4 {
+				buf[stride+i+0], buf[stride+j+0] = buf[stride+j+0], buf[stride+i+0]
+				buf[stride+i+1], buf[stride+j+1] = buf[stride+j+1], buf[stride+i+1]
+				buf[stride+i+2], buf[stride+j+2] = buf[stride+j+2], buf[stride+i+2]
+				buf[stride+i+3], buf[stride+j+3] = buf[stride+j+3], buf[stride+i+3]
+			}
+		}
+
+		res := &image.RGBA{
+			Pix:    buf,
+			Stride: frame.Stride,
+			Rect:   frame.Rect,
+		}
+
+		if err := enc.AddFrame(res, time.Duration(durationMillis)*time.Millisecond); err != nil {
+			enc.Close()
+			return nil, err
+		}
+	}
+
+	return enc, nil
+}
+
+type reverseYModifier struct {
+	in *webp.Animation
+}
+
+func (m reverseYModifier) modify() (*webp.AnimationEncoder, error) {
+	enc, err := webp.NewAnimationEncoder(m.in.CanvasWidth, m.in.CanvasHeight, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < m.in.FrameCount; i++ {
+		durationMillis := m.in.Timestamp[i]
+		if i > 0 {
+			durationMillis -= m.in.Timestamp[i-1]
+		}
+
+		frame := m.in.Image[i]
+
+		buf := append([]uint8{}, frame.Pix...)
+		for i, j := 0, m.in.CanvasHeight-1; i < j; i, j = i+1, j-1 {
+			strideI := i * frame.Stride
+			strideJ := j * frame.Stride
+			for k := 0; k < frame.Stride; k++ {
+				buf[strideI+k], buf[strideJ+k] = buf[strideJ+k], buf[strideI+k]
+			}
+		}
+
+		res := &image.RGBA{
+			Pix:    buf,
+			Stride: frame.Stride,
+			Rect:   frame.Rect,
+		}
+
+		if err := enc.AddFrame(res, time.Duration(durationMillis)*time.Millisecond); err != nil {
+			enc.Close()
+			return nil, err
+		}
+	}
+
+	return enc, nil
+}
+
 type stack []string
 
 func (s *stack) push(elem string) {
@@ -289,12 +376,14 @@ func (s *stack) pop() string {
 }
 
 func run() error {
-	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|>rev|,)`)
+	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|>revt|>revx|>revy|,)`)
 	stack := stack([]string{})
+	// TODO: assert all characters are used in tokenizing
 	for _, token := range tokenRE.FindAllString(os.Args[1], -1) {
+		fmt.Println("TOKEN", token)
 		switch token {
 		case ",":
-		case ">rev":
+		case ">revx":
 			arg := stack.pop()
 			emote, err := loadEmoteFilename(arg)
 			if err != nil {
@@ -302,7 +391,53 @@ func run() error {
 			}
 
 			// TODO: maybe use hash instead?
-			newEmote := fmt.Sprintf("%s>rev", emote)
+			newEmote := fmt.Sprintf("%s>revx", emote)
+
+			if err := unaryModifier(
+				emote,
+				newEmote,
+				func(in *webp.Animation) modifier {
+					return reverseXModifier{
+						in: in,
+					}
+				},
+			); err != nil {
+				return err
+			}
+
+			stack.push(newEmote)
+		case ">revy":
+			arg := stack.pop()
+			emote, err := loadEmoteFilename(arg)
+			if err != nil {
+				return err
+			}
+
+			// TODO: maybe use hash instead?
+			newEmote := fmt.Sprintf("%s>revy", emote)
+
+			if err := unaryModifier(
+				emote,
+				newEmote,
+				func(in *webp.Animation) modifier {
+					return reverseYModifier{
+						in: in,
+					}
+				},
+			); err != nil {
+				return err
+			}
+
+			stack.push(newEmote)
+		case ">revt":
+			arg := stack.pop()
+			emote, err := loadEmoteFilename(arg)
+			if err != nil {
+				return err
+			}
+
+			// TODO: maybe use hash instead?
+			newEmote := fmt.Sprintf("%s>revt", emote)
 
 			if err := unaryModifier(
 				emote,
