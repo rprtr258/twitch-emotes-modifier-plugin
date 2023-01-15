@@ -73,6 +73,18 @@ type mergedTimestamp struct {
 }
 
 func unsafeMergeTimeSeries(first, second []int) []mergedTimestamp {
+	// if second is static
+	if len(second) == 1 && second[0] == 0 {
+		res := make([]mergedTimestamp, 0, len(first))
+		for i, ts := range first {
+			res = append(res, mergedTimestamp{
+				timestamp: ts,
+				frames:    []int{i, 0},
+			})
+		}
+		return res
+	}
+
 	res := make([]mergedTimestamp, 0, len(first)+len(second))
 	i, j := 0, 0
 	secondOffset := 0

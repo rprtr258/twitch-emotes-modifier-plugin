@@ -3,7 +3,13 @@
 	go get -u ./...
 	go mod tidy
 
-# run sample
-@run:
-	go run main.go '60aed440997b4b396ed9ec39,6129ea8afd97806f9d734a76>over'
+@dump:
 	ls *.webp | xargs go run cmd/dump/dump.go
+
+# run trollDespair,snowTime sample
+@run-despair-snow:
+	go run main.go '603caea243b9e100141caf4f,6129ea8afd97806f9d734a76>over'
+
+# run peepoClap,snowTime sample
+@run-peepo-snow:
+	go run main.go '60aed440997b4b396ed9ec39,6129ea8afd97806f9d734a76>over'
