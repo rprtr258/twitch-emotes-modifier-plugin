@@ -211,7 +211,42 @@ func over(firstFilename, secondFilename, outFilename string) error {
 		return err
 	}
 
-	if err := os.WriteFile(outFilename, data, 0666); err != nil {
+	if err := os.WriteFile(outFilename+".webp", data, 0666); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func reverse(emoteFilename, outFilename string) error {
+	img, err := loadEmote(emoteFilename)
+	if err != nil {
+		return err
+	}
+
+	enc, err := webp.NewAnimationEncoder(img.CanvasWidth, img.CanvasHeight, 0, 0)
+	if err != nil {
+		return err
+	}
+	defer enc.Close()
+
+	for i := img.FrameCount - 1; i >= 0; i-- {
+		durationMillis := img.Timestamp[i]
+		if i > 0 {
+			durationMillis -= img.Timestamp[i-1]
+		}
+
+		if err := enc.AddFrame(img.Image[i], time.Duration(durationMillis)*time.Millisecond); err != nil {
+			return err
+		}
+	}
+
+	data, err := enc.Assemble()
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(outFilename+".webp", data, 0666); err != nil {
 		return err
 	}
 
@@ -235,11 +270,26 @@ func (s *stack) pop() string {
 }
 
 func run() error {
-	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|,)`)
+	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|>rev|,)`)
 	stack := stack([]string{})
 	for _, token := range tokenRE.FindAllString(os.Args[1], -1) {
 		switch token {
 		case ",":
+		case ">rev":
+			arg := stack.pop()
+			emote, err := loadEmoteFilename(arg)
+			if err != nil {
+				return err
+			}
+
+			// TODO: maybe use hash instead?
+			newEmote := fmt.Sprintf("%s>rev", emote)
+
+			if err := reverse(emote, newEmote); err != nil {
+				return err
+			}
+
+			stack.push(newEmote)
 		case ">over":
 			second := stack.pop()
 			first := stack.pop()
@@ -258,7 +308,7 @@ func run() error {
 
 			newEmote := fmt.Sprintf("%s,%s>over", first, second)
 			// TODO: do not re-evaluate if already exists (cache)
-			if err := over(firstEmote, secondEmote, newEmote+".webp"); err != nil {
+			if err := over(firstEmote, secondEmote, newEmote); err != nil {
 				return err
 			}
 
