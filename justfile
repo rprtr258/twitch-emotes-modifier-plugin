@@ -27,5 +27,5 @@
 	go run main.go '611523959bf574f1fded6d72>revx'
 
 # run reverseY(diesfromcringe) sample
-@run-revx:
+@run-revy:
 	go run main.go '611523959bf574f1fded6d72>revy'

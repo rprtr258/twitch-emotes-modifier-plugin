@@ -375,7 +375,11 @@ func (s *stack) pop() string {
 	return res
 }
 
-func unaryTokenHandler(stack stack, suffix string, construct func(*webp.Animation) modifier) error {
+func unaryTokenHandler(
+	stack *stack,
+	suffix string,
+	construct func(*webp.Animation) modifier,
+) error {
 	arg := stack.pop()
 	emote, err := loadEmoteFilename(arg)
 	if err != nil {
@@ -394,6 +398,47 @@ func unaryTokenHandler(stack stack, suffix string, construct func(*webp.Animatio
 	return nil
 }
 
+func binaryTokenHandler(
+	stack *stack,
+	suffix string,
+	construct func(a, b *webp.Animation) modifier,
+) error {
+	second := stack.pop()
+	first := stack.pop()
+
+	// TODO: assert stack size
+	// TODO: load only if id
+	firstEmote, err := loadEmoteFilename(first)
+	if err != nil {
+		return err
+	}
+
+	secondEmote, err := loadEmoteFilename(second)
+	if err != nil {
+		return err
+	}
+
+	newEmote := fmt.Sprintf("%s,%s%s", first, second, suffix)
+	// TODO: do not re-evaluate if already exists (cache)
+	if err := binaryModifier(
+		firstEmote,
+		secondEmote,
+		newEmote,
+		func(a, b *webp.Animation) modifier {
+			return overModifier{
+				first:  a,
+				second: b,
+			}
+		},
+	); err != nil {
+		return err
+	}
+
+	stack.push(newEmote)
+
+	return nil
+}
+
 func run() error {
 	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|>revt|>revx|>revy|,)`)
 	stack := stack([]string{})
@@ -404,7 +449,7 @@ func run() error {
 		case ",":
 		case ">revx":
 			if err := unaryTokenHandler(
-				stack,
+				&stack,
 				token,
 				func(in *webp.Animation) modifier {
 					return reverseXModifier{
@@ -416,7 +461,7 @@ func run() error {
 			}
 		case ">revy":
 			if err := unaryTokenHandler(
-				stack,
+				&stack,
 				token,
 				func(in *webp.Animation) modifier {
 					return reverseYModifier{
@@ -428,7 +473,7 @@ func run() error {
 			}
 		case ">revt":
 			if err := unaryTokenHandler(
-				stack,
+				&stack,
 				token,
 				func(in *webp.Animation) modifier {
 					return reverseModifier{
@@ -439,27 +484,9 @@ func run() error {
 				return err
 			}
 		case ">over":
-			second := stack.pop()
-			first := stack.pop()
-
-			// TODO: assert stack size
-			// TODO: load only if id
-			firstEmote, err := loadEmoteFilename(first)
-			if err != nil {
-				return err
-			}
-
-			secondEmote, err := loadEmoteFilename(second)
-			if err != nil {
-				return err
-			}
-
-			newEmote := fmt.Sprintf("%s,%s>over", first, second)
-			// TODO: do not re-evaluate if already exists (cache)
-			if err := binaryModifier(
-				firstEmote,
-				secondEmote,
-				newEmote,
+			if err := binaryTokenHandler(
+				&stack,
+				token,
 				func(a, b *webp.Animation) modifier {
 					return overModifier{
 						first:  a,
@@ -469,8 +496,6 @@ func run() error {
 			); err != nil {
 				return err
 			}
-
-			stack.push(newEmote)
 		default:
 			stack.push(token)
 		}
