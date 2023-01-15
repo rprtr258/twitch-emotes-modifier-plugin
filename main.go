@@ -36,7 +36,7 @@ func loadEmote(filename string) (*webp.Animation, error) {
 func loadEmoteFilename(emoteId string) (filename string, err error) {
 	imageFilename := fmt.Sprintf("%s.%s", emoteId, "webp")
 
-	if _, err := os.Stat(imageFilename); os.IsExist(err) {
+	if _, err := os.Stat(imageFilename); err == nil {
 		return imageFilename, nil
 	}
 
@@ -216,12 +216,11 @@ func run() error {
 	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|,)`)
 	stack := stack([]string{})
 	for _, token := range tokenRE.FindAllString(os.Args[1], -1) {
-		fmt.Println(token)
 		switch token {
 		case ",":
 		case ">over":
-			first := stack.pop()
 			second := stack.pop()
+			first := stack.pop()
 
 			// TODO: assert stack size
 			// TODO: load only if id
@@ -235,8 +234,9 @@ func run() error {
 				return err
 			}
 
-			newEmote := fmt.Sprintf("%s,%s>over.webp", firstEmote, secondEmote)
-			if err := over(firstEmote, secondEmote, newEmote); err != nil {
+			newEmote := fmt.Sprintf("%s,%s>over", first, second)
+			// TODO: do not re-evaluate if already exists (cache)
+			if err := over(firstEmote, secondEmote, newEmote+".webp"); err != nil {
 				return err
 			}
 
