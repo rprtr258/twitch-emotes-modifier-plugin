@@ -197,11 +197,11 @@ func mergeTimeSeries(first, second []int) []mergedTimestamp {
 	return unsafeMergeTimeSeries(first, second)
 }
 
-type concatModifier struct {
+type stackTModifier struct {
 	first, second *webp.Animation
 }
 
-func (m concatModifier) append(enc *webp.AnimationEncoder, img *webp.Animation) error {
+func (m stackTModifier) append(enc *webp.AnimationEncoder, img *webp.Animation) error {
 	for i, frame := range img.Image {
 		durationMillis := img.Timestamp[i]
 		if i > 0 {
@@ -217,7 +217,7 @@ func (m concatModifier) append(enc *webp.AnimationEncoder, img *webp.Animation) 
 	return nil
 }
 
-func (m concatModifier) modify() (*webp.AnimationEncoder, error) {
+func (m stackTModifier) modify() (*webp.AnimationEncoder, error) {
 	enc, err := webp.NewAnimationEncoder(m.first.CanvasWidth, m.first.CanvasHeight, 0, 0)
 	if err != nil {
 		return nil, err
@@ -531,7 +531,7 @@ func run() error {
 				&stack,
 				token,
 				func(a, b *webp.Animation) modifier {
-					return concatModifier{
+					return stackTModifier{
 						first:  a,
 						second: b,
 					}
