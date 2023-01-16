@@ -197,6 +197,98 @@ func mergeTimeSeries(first, second []int) []mergedTimestamp {
 	return unsafeMergeTimeSeries(first, second)
 }
 
+type stackXModifier struct {
+	first, second *webp.Animation
+}
+
+func (m stackXModifier) stack(a, b *image.RGBA) *image.RGBA {
+	buf := make([]uint8, 0, len(a.Pix)+len(b.Pix))
+	for i := 0; i < a.Rect.Dy(); i++ {
+		buf = append(buf, a.Pix[i*a.Stride:(i+1)*a.Stride]...)
+		buf = append(buf, b.Pix[i*b.Stride:(i+1)*b.Stride]...)
+	}
+
+	return &image.RGBA{
+		Pix:    buf,
+		Stride: a.Stride + b.Stride,
+		Rect:   image.Rect(0, 0, a.Rect.Dx()+b.Rect.Dx(), a.Rect.Dy()),
+	}
+}
+
+func (m stackXModifier) modify() (*webp.AnimationEncoder, error) {
+	if m.first.CanvasHeight != m.second.CanvasHeight {
+		return nil, fmt.Errorf("unequal heights on x-stack: %d and %d", m.first.CanvasHeight, m.second.CanvasHeight)
+	}
+
+	enc, err := webp.NewAnimationEncoder(m.first.CanvasWidth+m.second.CanvasWidth, m.first.CanvasHeight, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	mergedTimestamps := mergeTimeSeries(m.first.Timestamp, m.second.Timestamp)
+
+	// TODO: cache same frames stacked
+	for i, ts := range mergedTimestamps {
+		durationMillis := ts.timestamp
+		if i > 0 {
+			durationMillis -= mergedTimestamps[i-1].timestamp
+		}
+
+		frame := m.stack(m.first.Image[ts.frames[0]], m.second.Image[ts.frames[1]])
+		if err := enc.AddFrame(frame, time.Duration(durationMillis)*time.Millisecond); err != nil {
+			enc.Close()
+			return nil, err
+		}
+	}
+
+	return enc, nil
+}
+
+type stackYModifier struct {
+	first, second *webp.Animation
+}
+
+func (m stackYModifier) stack(a, b *image.RGBA) *image.RGBA {
+	buf := make([]uint8, 0, len(a.Pix)+len(b.Pix))
+	buf = append(buf, a.Pix...)
+	buf = append(buf, b.Pix...)
+
+	return &image.RGBA{
+		Pix:    buf,
+		Stride: a.Stride,
+		Rect:   image.Rect(0, 0, a.Rect.Dx(), a.Rect.Dy()+b.Rect.Dy()),
+	}
+}
+
+func (m stackYModifier) modify() (*webp.AnimationEncoder, error) {
+	if m.first.CanvasWidth != m.second.CanvasWidth {
+		return nil, fmt.Errorf("unequal widths on y-stack: %d and %d", m.first.CanvasWidth, m.second.CanvasWidth)
+	}
+
+	enc, err := webp.NewAnimationEncoder(m.first.CanvasWidth, m.first.CanvasHeight+m.second.CanvasHeight, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	mergedTimestamps := mergeTimeSeries(m.first.Timestamp, m.second.Timestamp)
+
+	// TODO: cache same frames stacked
+	for i, ts := range mergedTimestamps {
+		durationMillis := ts.timestamp
+		if i > 0 {
+			durationMillis -= mergedTimestamps[i-1].timestamp
+		}
+
+		frame := m.stack(m.first.Image[ts.frames[0]], m.second.Image[ts.frames[1]])
+		if err := enc.AddFrame(frame, time.Duration(durationMillis)*time.Millisecond); err != nil {
+			enc.Close()
+			return nil, err
+		}
+	}
+
+	return enc, nil
+}
+
 type stackTModifier struct {
 	first, second *webp.Animation
 }
@@ -284,11 +376,11 @@ func (m overModifier) modify() (*webp.AnimationEncoder, error) {
 	return enc, nil
 }
 
-type reverseModifier struct {
+type reverseTModifier struct {
 	in *webp.Animation
 }
 
-func (m reverseModifier) modify() (*webp.AnimationEncoder, error) {
+func (m reverseTModifier) modify() (*webp.AnimationEncoder, error) {
 	enc, err := webp.NewAnimationEncoder(m.in.CanvasWidth, m.in.CanvasHeight, 0, 0)
 	if err != nil {
 		return nil, err
@@ -470,7 +562,7 @@ func binaryTokenHandler(
 }
 
 func run() error {
-	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|>revt|>revx|>revy|>concat|,)`)
+	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|>revt|>revx|>revy|>stackx|>stacky|>stackt|,)`)
 	stack := stack([]string{})
 	// TODO: assert all characters are used in tokenizing
 	for _, token := range tokenRE.FindAllString(os.Args[1], -1) {
@@ -506,7 +598,7 @@ func run() error {
 				&stack,
 				token,
 				func(in *webp.Animation) modifier {
-					return reverseModifier{
+					return reverseTModifier{
 						in: in,
 					}
 				},
@@ -526,7 +618,33 @@ func run() error {
 			); err != nil {
 				return err
 			}
-		case ">concat":
+		case ">stackx":
+			if err := binaryTokenHandler(
+				&stack,
+				token,
+				func(a, b *webp.Animation) modifier {
+					return stackXModifier{
+						first:  a,
+						second: b,
+					}
+				},
+			); err != nil {
+				return err
+			}
+		case ">stacky":
+			if err := binaryTokenHandler(
+				&stack,
+				token,
+				func(a, b *webp.Animation) modifier {
+					return stackYModifier{
+						first:  a,
+						second: b,
+					}
+				},
+			); err != nil {
+				return err
+			}
+		case ">stackt":
 			if err := binaryTokenHandler(
 				&stack,
 				token,

@@ -31,6 +31,13 @@
 	go run main.go '611523959bf574f1fded6d72>revy'
 
 # run concat(diesfromcringe, reverseTime(diesofcringe)) sample
-@run-concat:
-	go run main.go '611523959bf574f1fded6d72,611523959bf574f1fded6d72>revt>concat'
+@run-stackt:
+	go run main.go '611523959bf574f1fded6d72,611523959bf574f1fded6d72>revt>stackt'
 
+# run stackx(diesfromcringe, reverseTime(diesofcringe)) sample
+@run-stackx:
+	go run main.go '611523959bf574f1fded6d72,611523959bf574f1fded6d72>revt>stackx'
+
+# run stacky(diesfromcringe, reverseTime(diesofcringe)) sample
+@run-stacky:
+	go run main.go '611523959bf574f1fded6d72,611523959bf574f1fded6d72>revt>stacky'
