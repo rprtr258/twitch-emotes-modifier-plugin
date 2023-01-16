@@ -28,6 +28,15 @@ func loadEmote(filename string) (*webp.Animation, error) {
 	return anim, nil
 }
 
+func durations(timestamps []int) []int {
+	res := make([]int, len(timestamps))
+	res[0] = timestamps[0]
+	for i := 1; i < len(timestamps); i++ {
+		res[i] = timestamps[i] - timestamps[i-1]
+	}
+	return res
+}
+
 func run() error {
 	img, err := loadEmote(os.Args[1])
 	if err != nil {
@@ -36,7 +45,8 @@ func run() error {
 
 	fmt.Println("Dimensions:", img.CanvasWidth, "*", img.CanvasHeight)
 	fmt.Println("Frames:", img.FrameCount)
-	fmt.Println("Timestamp:", img.Timestamp)
+	fmt.Println("Durations:", durations(img.Timestamp))
+	fmt.Println("Timestamps:", img.Timestamp)
 	return nil
 }
 

@@ -7,9 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"time"
 
+	"github.com/hedhyw/rex/pkg/rex"
 	"github.com/tidbyt/go-libwebp/webp"
 )
 
@@ -215,6 +215,7 @@ func (m stackXModifier) stack(a, b *image.RGBA) *image.RGBA {
 	}
 }
 
+// TODO: fix animation slowdown for some reason for >dup>revt>stackx and >dup>revt>stacky
 func (m stackXModifier) modify() (*webp.AnimationEncoder, error) {
 	if m.first.CanvasHeight != m.second.CanvasHeight {
 		return nil, fmt.Errorf("unequal heights on x-stack: %d and %d", m.first.CanvasHeight, m.second.CanvasHeight)
@@ -568,7 +569,21 @@ func binaryTokenHandler(
 }
 
 func run() error {
-	tokenRE := regexp.MustCompile(`([-_A-Za-z():0-9]{2,99}|>over|>revt|>revx|>revy|>stackx|>stacky|>stackt|,)`)
+	tokenRE := rex.New(rex.Group.Composite(
+		rex.Common.Class( // match emote name
+			rex.Chars.Alphanumeric(),
+			rex.Chars.Runes("-_():"),
+		).Repeat().Between(2, 99),
+		rex.Common.Text(`,`),
+		// match modifiers
+		rex.Common.Text(`>over`),
+		rex.Common.Text(`>revt`),
+		rex.Common.Text(`>revx`),
+		rex.Common.Text(`>revy`),
+		rex.Common.Text(`>stackx`),
+		rex.Common.Text(`>stacky`),
+		rex.Common.Text(`>stackt`),
+	)).MustCompile()
 	stack := stack([]string{})
 	// TODO: assert all characters are used in tokenizing
 	for _, token := range tokenRE.FindAllString(os.Args[1], -1) {
