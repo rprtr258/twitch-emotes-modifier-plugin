@@ -204,8 +204,8 @@ type stackXModifier struct {
 func (m stackXModifier) stack(a, b *image.RGBA) *image.RGBA {
 	buf := make([]uint8, 0, len(a.Pix)+len(b.Pix))
 	for i := 0; i < a.Rect.Dy(); i++ {
-		buf = append(buf, a.Pix[i*a.Stride:(i+1)*a.Stride]...)
-		buf = append(buf, b.Pix[i*b.Stride:(i+1)*b.Stride]...)
+		buf = append(buf, a.Pix[i*a.Stride:][:a.Stride]...)
+		buf = append(buf, b.Pix[i*b.Stride:][:b.Stride]...)
 	}
 
 	return &image.RGBA{
@@ -226,6 +226,9 @@ func (m stackXModifier) modify() (*webp.AnimationEncoder, error) {
 	}
 
 	mergedTimestamps := mergeTimeSeries(m.first.Timestamp, m.second.Timestamp)
+	fmt.Println(m.first.Timestamp)
+	fmt.Println(m.second.Timestamp)
+	fmt.Println(mergedTimestamps)
 
 	// TODO: cache same frames stacked
 	for i, ts := range mergedTimestamps {
@@ -234,7 +237,10 @@ func (m stackXModifier) modify() (*webp.AnimationEncoder, error) {
 			durationMillis -= mergedTimestamps[i-1].timestamp
 		}
 
-		frame := m.stack(m.first.Image[ts.frames[0]], m.second.Image[ts.frames[1]])
+		frame := m.stack(
+			m.first.Image[ts.frames[0]],
+			m.second.Image[ts.frames[1]],
+		)
 		if err := enc.AddFrame(frame, time.Duration(durationMillis)*time.Millisecond); err != nil {
 			enc.Close()
 			return nil, err
