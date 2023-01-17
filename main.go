@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	"image"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/hedhyw/rex/pkg/rex"
 
@@ -98,118 +96,6 @@ func binaryModifier(
 
 	m := construct(firstImg, secondImg)
 	return modifiers.Run(m, outID)
-}
-
-type reverseTModifier struct {
-	in *webp.Animation
-}
-
-func (m reverseTModifier) Modify() (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(m.in.CanvasWidth, m.in.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := m.in.FrameCount - 1; i >= 0; i-- {
-		durationMillis := m.in.Timestamp[i]
-		if i > 0 {
-			durationMillis -= m.in.Timestamp[i-1]
-		}
-
-		if err := enc.AddFrame(m.in.Image[i], time.Duration(durationMillis)*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
-	}
-
-	return enc, nil
-}
-
-type reverseXModifier struct {
-	// TODO: embed?
-	in *webp.Animation
-}
-
-func (m reverseXModifier) Modify() (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(m.in.CanvasWidth, m.in.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < m.in.FrameCount; i++ {
-		durationMillis := m.in.Timestamp[i]
-		if i > 0 {
-			durationMillis -= m.in.Timestamp[i-1]
-		}
-
-		frame := m.in.Image[i]
-
-		buf := append([]uint8{}, frame.Pix...)
-		for row := 0; row < m.in.CanvasHeight; row++ {
-			stride := row * frame.Stride
-			for i, j := 0, frame.Stride-4; i < j; i, j = i+4, j-4 {
-				buf[stride+i+0], buf[stride+j+0] = buf[stride+j+0], buf[stride+i+0]
-				buf[stride+i+1], buf[stride+j+1] = buf[stride+j+1], buf[stride+i+1]
-				buf[stride+i+2], buf[stride+j+2] = buf[stride+j+2], buf[stride+i+2]
-				buf[stride+i+3], buf[stride+j+3] = buf[stride+j+3], buf[stride+i+3]
-			}
-		}
-
-		res := &image.RGBA{
-			Pix:    buf,
-			Stride: frame.Stride,
-			Rect:   frame.Rect,
-		}
-
-		if err := enc.AddFrame(res, time.Duration(durationMillis)*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
-	}
-
-	return enc, nil
-}
-
-type reverseYModifier struct {
-	in *webp.Animation
-}
-
-func (m reverseYModifier) Modify() (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(m.in.CanvasWidth, m.in.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < m.in.FrameCount; i++ {
-		durationMillis := m.in.Timestamp[i]
-		if i > 0 {
-			durationMillis -= m.in.Timestamp[i-1]
-		}
-
-		frame := m.in.Image[i]
-
-		buf := append([]uint8{}, frame.Pix...)
-		for i, j := 0, m.in.CanvasHeight-1; i < j; i, j = i+1, j-1 {
-			strideI := i * frame.Stride
-			strideJ := j * frame.Stride
-			for k := 0; k < frame.Stride; k++ {
-				buf[strideI+k], buf[strideJ+k] = buf[strideJ+k], buf[strideI+k]
-			}
-		}
-
-		res := &image.RGBA{
-			Pix:    buf,
-			Stride: frame.Stride,
-			Rect:   frame.Rect,
-		}
-
-		if err := enc.AddFrame(res, time.Duration(durationMillis)*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
-	}
-
-	return enc, nil
 }
 
 type stack []string
@@ -312,8 +198,8 @@ func run() error {
 				&stack,
 				token,
 				func(in *webp.Animation) modifiers.Modifier {
-					return reverseXModifier{
-						in: in,
+					return modifiers.ReverseX{
+						In: in,
 					}
 				},
 			); err != nil {
@@ -324,8 +210,8 @@ func run() error {
 				&stack,
 				token,
 				func(in *webp.Animation) modifiers.Modifier {
-					return reverseYModifier{
-						in: in,
+					return modifiers.ReverseY{
+						In: in,
 					}
 				},
 			); err != nil {
@@ -336,8 +222,8 @@ func run() error {
 				&stack,
 				token,
 				func(in *webp.Animation) modifiers.Modifier {
-					return reverseTModifier{
-						in: in,
+					return modifiers.ReverseT{
+						In: in,
 					}
 				},
 			); err != nil {
