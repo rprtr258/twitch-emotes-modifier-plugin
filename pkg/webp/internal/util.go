@@ -3,11 +3,9 @@ package internal
 
 import (
 	"bufio"
-	"fmt"
 	"image"
 	"image/png"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -15,75 +13,52 @@ import (
 // GetExFilePath returns the path of specified example file.
 func GetExFilePath(name string) string {
 	path := filepath.Join("../examples/images", name)
-	if _, err := os.Stat(path); err == nil {
-		return path
-	}
-	panic(fmt.Errorf("%v does not exist", path))
+	must(os.Stat(path))
+	return path
 }
 
 // GetOutFilePath returns the path of specified out file.
 func GetOutFilePath(name string) string {
 	path := "../examples/out"
-	if _, err := os.Stat(path); err == nil {
-		return filepath.Join(path, name)
-	}
-	panic(fmt.Errorf("out directory does not exist"))
+	must(os.Stat(path))
+	return filepath.Join(path, name)
 }
 
 // OpenFile opens specified example file
 func OpenFile(name string) (io io.Reader) {
-	io, err := os.Open(GetExFilePath(name))
-	if err != nil {
-		panic(err)
-	}
-	return
+	return must(os.Open(GetExFilePath(name)))
 }
 
 // ReadFile reads and returns data bytes of specified example file.
-func ReadFile(name string) (data []byte) {
-	data, err := ioutil.ReadFile(GetExFilePath(name))
-	if err != nil {
-		panic(err)
-	}
-	return
+func ReadFile(name string) []byte {
+	return must(os.ReadFile(GetExFilePath(name)))
 }
 
 // CreateFile opens specified example file
-func CreateFile(name string) (f *os.File) {
-	f, err := os.Create(GetOutFilePath(name))
-	if err != nil {
-		panic(err)
-	}
-	return
+func CreateFile(name string) *os.File {
+	return must(os.Create(GetOutFilePath(name)))
 }
 
 // WritePNG encodes and writes image into PNG file.
 func WritePNG(img image.Image, name string) {
-	f, err := os.Create(GetOutFilePath(name))
-	if err != nil {
-		panic(err)
-	}
+	f := must(os.Create(GetOutFilePath(name)))
+	defer f.Close()
 	b := bufio.NewWriter(f)
-	defer func() {
-		b.Flush()
-		f.Close()
-	}()
+	defer b.Flush()
 
 	if err := png.Encode(b, img); err != nil {
 		panic(err)
 	}
-	return
 }
 
 // ReadPNG reads and decodes png data into image.Image
-func ReadPNG(name string) (img image.Image) {
-	io, err := os.Open(GetExFilePath(name))
+func ReadPNG(name string) image.Image {
+	return must(png.Decode(must(os.Open(GetExFilePath(name)))))
+}
+
+func must[T any](value T, err error) T {
 	if err != nil {
 		panic(err)
 	}
-	img, err = png.Decode(io)
-	if err != nil {
-		panic(err)
-	}
-	return
+	return value
 }
