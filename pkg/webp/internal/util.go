@@ -12,14 +12,14 @@ import (
 
 // GetExFilePath returns the path of specified example file.
 func GetExFilePath(name string) string {
-	path := filepath.Join("../examples/images", name)
+	path := filepath.Join("examples/images", name)
 	must(os.Stat(path))
 	return path
 }
 
 // GetOutFilePath returns the path of specified out file.
 func GetOutFilePath(name string) string {
-	path := "../examples/out"
+	path := "examples/out"
 	must(os.Stat(path))
 	return filepath.Join(path, name)
 }
