@@ -83,7 +83,7 @@ func DecodeYUVA(data []byte, options *DecoderOptions) (img *YUVAImage, err error
 
 	// Retrive WebP features from data stream
 	if status := C.WebPGetFeatures(cDataPtr, cDataSize, &config.input); status != C.VP8_STATUS_OK {
-		return nil, fmt.Errorf("Could not get features from the data stream, return %s", statusString(status))
+		return nil, fmt.Errorf("could not get features from the data stream, status %s", statusString(status))
 	}
 
 	outWidth, outHeight := calcOutputSize(config)
@@ -120,7 +120,7 @@ func DecodeYUVA(data []byte, options *DecoderOptions) (img *YUVAImage, err error
 	}
 
 	if status := C.WebPDecode(cDataPtr, cDataSize, config); status != C.VP8_STATUS_OK {
-		return nil, fmt.Errorf("Could not decode data stream, return %s", statusString(status))
+		return nil, fmt.Errorf("could not decode data stream, return %s", statusString(status))
 	}
 
 	return
@@ -138,7 +138,7 @@ func DecodeRGBA(data []byte, options *DecoderOptions) (img *image.RGBA, err erro
 
 	// Retrive WebP features
 	if status := C.WebPGetFeatures(cDataPtr, cDataSize, &config.input); status != C.VP8_STATUS_OK {
-		return nil, fmt.Errorf("Could not get features from the data stream, return %s", statusString(status))
+		return nil, fmt.Errorf("could not get features from the data stream, status %s", statusString(status))
 	}
 
 	// Allocate output image
@@ -157,7 +157,7 @@ func DecodeRGBA(data []byte, options *DecoderOptions) (img *image.RGBA, err erro
 
 	// Decode
 	if status := C.WebPDecode(cDataPtr, cDataSize, config); status != C.VP8_STATUS_OK {
-		return nil, fmt.Errorf("Could not decode data stream, return %s", statusString(status))
+		return nil, fmt.Errorf("could not decode data stream, return %s", statusString(status))
 	}
 
 	return
@@ -191,7 +191,7 @@ func initDecoderConfig(options *DecoderOptions) (config *C.WebPDecoderConfig, er
 	// Initialize decoder config
 	config = &C.WebPDecoderConfig{}
 	if C.WebPInitDecoderConfig(config) == 0 {
-		return nil, errors.New("Could not initialize decoder config")
+		return nil, errors.New("could not initialize decoder config")
 	}
 
 	// Set up decoder options

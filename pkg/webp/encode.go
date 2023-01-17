@@ -464,7 +464,7 @@ func EncodeRGBA(w io.Writer, img image.Image, c *Config) (err error) {
 
 	pic := C.calloc_WebPPicture()
 	if pic == nil {
-		return errors.New("Could not allocate webp picture")
+		return errors.New("could not allocate webp picture")
 	}
 	defer C.free_WebPPicture(pic)
 
@@ -472,7 +472,7 @@ func EncodeRGBA(w io.Writer, img image.Image, c *Config) (err error) {
 	defer releaseDestinationManager(pic)
 
 	if C.WebPPictureInit(pic) == 0 {
-		return errors.New("Could not initialize webp picture")
+		return errors.New("could not initialize webp picture")
 	}
 	defer C.WebPPictureFree(pic)
 
@@ -495,7 +495,7 @@ func EncodeRGBA(w io.Writer, img image.Image, c *Config) (err error) {
 	}
 
 	if C.WebPEncode(&c.c, pic) == 0 {
-		return fmt.Errorf("Encoding error: %d", pic.error_code)
+		return fmt.Errorf("encoding error: %d", pic.error_code)
 	}
 
 	return
@@ -508,7 +508,7 @@ func EncodeGray(w io.Writer, p *image.Gray, c *Config) (err error) {
 
 	pic := C.calloc_WebPPicture()
 	if pic == nil {
-		return errors.New("Could not allocate webp picture")
+		return errors.New("could not allocate webp picture")
 	}
 	defer C.free_WebPPicture(pic)
 
@@ -516,7 +516,7 @@ func EncodeGray(w io.Writer, p *image.Gray, c *Config) (err error) {
 	defer releaseDestinationManager(pic)
 
 	if C.WebPPictureInit(pic) == 0 {
-		return errors.New("Could not initialize webp picture")
+		return errors.New("could not initialize webp picture")
 	}
 	defer C.WebPPictureFree(pic)
 
@@ -526,7 +526,7 @@ func EncodeGray(w io.Writer, p *image.Gray, c *Config) (err error) {
 	pic.y_stride = C.int(p.Stride)
 
 	if C.webpEncodeGray(&c.c, pic, (*C.uint8_t)(&p.Pix[0])) == 0 {
-		return fmt.Errorf("Encoding error: %d", pic.error_code)
+		return fmt.Errorf("encoding error: %d", pic.error_code)
 	}
 
 	return
@@ -540,7 +540,7 @@ func EncodeYUVA(w io.Writer, img *YUVAImage, c *Config) (err error) {
 
 	pic := C.calloc_WebPPicture()
 	if pic == nil {
-		return errors.New("Could not allocate webp picture")
+		return errors.New("could not allocate webp picture")
 	}
 	defer C.free_WebPPicture(pic)
 
@@ -548,7 +548,7 @@ func EncodeYUVA(w io.Writer, img *YUVAImage, c *Config) (err error) {
 	defer releaseDestinationManager(pic)
 
 	if C.WebPPictureInit(pic) == 0 {
-		return errors.New("Could not initialize webp picture")
+		return errors.New("could not initialize webp picture")
 	}
 	defer C.WebPPictureFree(pic)
 
@@ -566,7 +566,7 @@ func EncodeYUVA(w io.Writer, img *YUVAImage, c *Config) (err error) {
 	}
 
 	if C.webpEncodeYUVA(&c.c, pic, y, u, v, a) == 0 {
-		return fmt.Errorf("Encoding error: %d", pic.error_code)
+		return fmt.Errorf("encoding error: %d", pic.error_code)
 	}
 	return
 }
