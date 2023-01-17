@@ -11,7 +11,6 @@ import (
 
 	"github.com/hedhyw/rex/pkg/rex"
 
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/internal"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/modifiers"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 )
@@ -99,56 +98,6 @@ func binaryModifier(
 
 	m := construct(firstImg, secondImg)
 	return modifiers.Run(m, outID)
-}
-
-type overModifier struct {
-	first, second *webp.Animation
-}
-
-func (m overModifier) Modify() (*webp.AnimationEncoder, error) {
-	mergedTimestamps := internal.MergeTimeSeries(m.first.Timestamp, m.second.Timestamp)
-
-	enc, err := webp.NewAnimationEncoder(m.first.CanvasHeight, m.first.CanvasWidth, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	buf := make([]uint8, len(m.first.Image[0].Pix))
-	for i, ts := range mergedTimestamps {
-		durationMillis := ts.Timestamp
-		if i > 0 {
-			durationMillis -= mergedTimestamps[i-1].Timestamp
-		}
-
-		firstFrame := m.first.Image[ts.Frames[0]]
-		secondFrame := m.second.Image[ts.Frames[1]]
-
-		buf := append(buf[:0], firstFrame.Pix...)
-		for i := 0; i < len(buf); i += 4 {
-			// TODO(OPTIMIZE): https://stackoverflow.com/questions/41093527/how-to-blend-two-rgb-unsigned-byte-colors-stored-as-unsigned-32bit-ints-fast
-			alpha := int32(secondFrame.Pix[i+3])
-			for j := 0; j < 3; j++ {
-				a := int32(buf[i+j])
-				b := int32(secondFrame.Pix[i+j])
-				buf[i+j] = uint8((a*(255-alpha) + b*alpha) / 255)
-			}
-			if uint8(alpha) > buf[i+3] {
-				buf[i+3] = uint8(alpha)
-			}
-		}
-		firstFrameCopy := &image.RGBA{
-			Pix:    buf,
-			Stride: firstFrame.Stride,
-			Rect:   firstFrame.Rect,
-		}
-
-		if err := enc.AddFrame(firstFrameCopy, time.Duration(durationMillis)*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
-	}
-
-	return enc, nil
 }
 
 type reverseTModifier struct {
@@ -399,9 +348,9 @@ func run() error {
 				&stack,
 				token,
 				func(a, b *webp.Animation) modifiers.Modifier {
-					return overModifier{
-						first:  a,
-						second: b,
+					return modifiers.Over{
+						First:  a,
+						Second: b,
 					}
 				},
 			); err != nil {
