@@ -11,6 +11,7 @@ import (
 
 	"github.com/hedhyw/rex/pkg/rex"
 
+	"github.com/rprtr258/twitch-emotes-modifier-plugin/internal"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/modifiers"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 )
@@ -100,224 +101,12 @@ func binaryModifier(
 	return modifiers.Run(m, outID)
 }
 
-type mergedTimestamp struct {
-	timestamp int
-	frames    []int
-}
-
-func unsafeMergeTimeSeries(first, second []int) []mergedTimestamp {
-	// if second is static
-	if len(second) == 1 && second[0] == 0 {
-		res := make([]mergedTimestamp, 0, len(first))
-		for i, ts := range first {
-			res = append(res, mergedTimestamp{
-				timestamp: ts,
-				frames:    []int{i, 0},
-			})
-		}
-		return res
-	}
-
-	res := make([]mergedTimestamp, 0, len(first)+len(second))
-	i, j := 0, 0
-	secondOffset := 0
-	for i < len(first) {
-		var m mergedTimestamp
-		switch {
-		case first[i] < second[j]+secondOffset:
-			m = mergedTimestamp{
-				timestamp: first[i],
-				frames:    []int{i, j},
-			}
-			i++
-		case first[i] > second[j]+secondOffset:
-			m = mergedTimestamp{
-				timestamp: second[j] + secondOffset,
-				frames:    []int{i, j},
-			}
-			j++
-			if j == len(second) {
-				j = 0
-				secondOffset += second[len(second)-1]
-			}
-		case first[i] == second[j]+secondOffset:
-			m = mergedTimestamp{
-				timestamp: first[i],
-				frames:    []int{i, j},
-			}
-			i++
-			j++
-			if j == len(second) {
-				j = 0
-				secondOffset += second[len(second)-1]
-			}
-		}
-		res = append(res, m)
-	}
-	return res
-}
-
-func mergeTimeSeries(first, second []int) []mergedTimestamp {
-	if len(first) == 0 || len(second) == 0 {
-		panic("time series must not be empty")
-	}
-
-	if first[len(first)-1] < second[len(second)-1] {
-		res := unsafeMergeTimeSeries(second, first)
-		for i := range res {
-			res[i].frames = []int{
-				res[i].frames[1],
-				res[i].frames[0],
-			}
-		}
-		return res
-	}
-
-	return unsafeMergeTimeSeries(first, second)
-}
-
-type stackXModifier struct {
-	first, second *webp.Animation
-}
-
-func (m stackXModifier) stack(a, b *image.RGBA) *image.RGBA {
-	buf := make([]uint8, 0, len(a.Pix)+len(b.Pix))
-	for i := 0; i < a.Rect.Dy(); i++ {
-		buf = append(buf, a.Pix[i*a.Stride:][:a.Stride]...)
-		buf = append(buf, b.Pix[i*b.Stride:][:b.Stride]...)
-	}
-
-	return &image.RGBA{
-		Pix:    buf,
-		Stride: a.Stride + b.Stride,
-		Rect:   image.Rect(0, 0, a.Rect.Dx()+b.Rect.Dx(), a.Rect.Dy()),
-	}
-}
-
-// TODO: fix animation slowdown for some reason for >dup>revt>stackx and >dup>revt>stacky
-func (m stackXModifier) Modify() (*webp.AnimationEncoder, error) {
-	if m.first.CanvasHeight != m.second.CanvasHeight {
-		return nil, fmt.Errorf("unequal heights on x-stack: %d and %d", m.first.CanvasHeight, m.second.CanvasHeight)
-	}
-
-	enc, err := webp.NewAnimationEncoder(m.first.CanvasWidth+m.second.CanvasWidth, m.first.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	mergedTimestamps := mergeTimeSeries(m.first.Timestamp, m.second.Timestamp)
-	fmt.Println(m.first.Timestamp)
-	fmt.Println(m.second.Timestamp)
-	fmt.Println(mergedTimestamps)
-
-	// TODO: cache same frames stacked
-	for i, ts := range mergedTimestamps {
-		durationMillis := ts.timestamp
-		if i > 0 {
-			durationMillis -= mergedTimestamps[i-1].timestamp
-		}
-
-		frame := m.stack(
-			m.first.Image[ts.frames[0]],
-			m.second.Image[ts.frames[1]],
-		)
-		if err := enc.AddFrame(frame, time.Duration(durationMillis)*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
-	}
-
-	return enc, nil
-}
-
-type stackYModifier struct {
-	first, second *webp.Animation
-}
-
-func (m stackYModifier) stack(a, b *image.RGBA) *image.RGBA {
-	buf := make([]uint8, 0, len(a.Pix)+len(b.Pix))
-	buf = append(buf, a.Pix...)
-	buf = append(buf, b.Pix...)
-
-	return &image.RGBA{
-		Pix:    buf,
-		Stride: a.Stride,
-		Rect:   image.Rect(0, 0, a.Rect.Dx(), a.Rect.Dy()+b.Rect.Dy()),
-	}
-}
-
-func (m stackYModifier) Modify() (*webp.AnimationEncoder, error) {
-	if m.first.CanvasWidth != m.second.CanvasWidth {
-		return nil, fmt.Errorf("unequal widths on y-stack: %d and %d", m.first.CanvasWidth, m.second.CanvasWidth)
-	}
-
-	enc, err := webp.NewAnimationEncoder(m.first.CanvasWidth, m.first.CanvasHeight+m.second.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	mergedTimestamps := mergeTimeSeries(m.first.Timestamp, m.second.Timestamp)
-
-	// TODO: cache same frames stacked
-	for i, ts := range mergedTimestamps {
-		durationMillis := ts.timestamp
-		if i > 0 {
-			durationMillis -= mergedTimestamps[i-1].timestamp
-		}
-
-		frame := m.stack(m.first.Image[ts.frames[0]], m.second.Image[ts.frames[1]])
-		if err := enc.AddFrame(frame, time.Duration(durationMillis)*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
-	}
-
-	return enc, nil
-}
-
-type stackTModifier struct {
-	first, second *webp.Animation
-}
-
-func (m stackTModifier) append(enc *webp.AnimationEncoder, img *webp.Animation) error {
-	for i, frame := range img.Image {
-		durationMillis := img.Timestamp[i]
-		if i > 0 {
-			durationMillis -= img.Timestamp[i-1]
-		}
-
-		if err := enc.AddFrame(frame, time.Duration(durationMillis)*time.Millisecond); err != nil {
-			enc.Close()
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (m stackTModifier) Modify() (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(m.first.CanvasWidth, m.first.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := m.append(enc, m.first); err != nil {
-		return nil, err
-	}
-
-	if err := m.append(enc, m.second); err != nil {
-		return nil, err
-	}
-
-	return enc, nil
-}
-
 type overModifier struct {
 	first, second *webp.Animation
 }
 
 func (m overModifier) Modify() (*webp.AnimationEncoder, error) {
-	mergedTimestamps := mergeTimeSeries(m.first.Timestamp, m.second.Timestamp)
+	mergedTimestamps := internal.MergeTimeSeries(m.first.Timestamp, m.second.Timestamp)
 
 	enc, err := webp.NewAnimationEncoder(m.first.CanvasHeight, m.first.CanvasWidth, 0, 0)
 	if err != nil {
@@ -326,13 +115,13 @@ func (m overModifier) Modify() (*webp.AnimationEncoder, error) {
 
 	buf := make([]uint8, len(m.first.Image[0].Pix))
 	for i, ts := range mergedTimestamps {
-		durationMillis := ts.timestamp
+		durationMillis := ts.Timestamp
 		if i > 0 {
-			durationMillis -= mergedTimestamps[i-1].timestamp
+			durationMillis -= mergedTimestamps[i-1].Timestamp
 		}
 
-		firstFrame := m.first.Image[ts.frames[0]]
-		secondFrame := m.second.Image[ts.frames[1]]
+		firstFrame := m.first.Image[ts.Frames[0]]
+		secondFrame := m.second.Image[ts.Frames[1]]
 
 		buf := append(buf[:0], firstFrame.Pix...)
 		for i := 0; i < len(buf); i += 4 {
@@ -623,9 +412,9 @@ func run() error {
 				&stack,
 				token,
 				func(a, b *webp.Animation) modifiers.Modifier {
-					return stackXModifier{
-						first:  a,
-						second: b,
+					return modifiers.StackX{
+						First:  a,
+						Second: b,
 					}
 				},
 			); err != nil {
@@ -636,9 +425,9 @@ func run() error {
 				&stack,
 				token,
 				func(a, b *webp.Animation) modifiers.Modifier {
-					return stackYModifier{
-						first:  a,
-						second: b,
+					return modifiers.StackY{
+						First:  a,
+						Second: b,
 					}
 				},
 			); err != nil {
@@ -649,9 +438,9 @@ func run() error {
 				&stack,
 				token,
 				func(a, b *webp.Animation) modifiers.Modifier {
-					return stackTModifier{
-						first:  a,
-						second: b,
+					return modifiers.StackT{
+						First:  a,
+						Second: b,
 					}
 				},
 			); err != nil {
