@@ -10,7 +10,8 @@ import (
 	"time"
 
 	"github.com/hedhyw/rex/pkg/rex"
-	"github.com/tidbyt/go-libwebp/webp"
+
+	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 )
 
 type modifier interface {

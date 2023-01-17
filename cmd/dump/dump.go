@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/tidbyt/go-libwebp/webp"
+	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 )
 
 func loadEmote(filename string) (*webp.Animation, error) {

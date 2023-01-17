@@ -1,4 +1,4 @@
 github.com/hedhyw/rex v0.5.0 h1:H9KL2BeTBtwfxCCYku19P9GLv3m5JKCirPAft+uMKc8=
 github.com/hedhyw/rex v0.5.0/go.mod h1:n9CYz3ztkAp56mrMXw65Q3LeXCO2AZSUvO7VMHsVMF8=
-github.com/tidbyt/go-libwebp v0.0.0-20220802221933-1fabc3b46601 h1:W7xhAgRtepnWBTmbzb0R+5ikjEYCX1c55SN8HJv5FcI=
-github.com/tidbyt/go-libwebp v0.0.0-20220802221933-1fabc3b46601/go.mod h1:JU6yp7mldR7lmftjHPtaDs+Q8xn7l2tMR1XYx5iJELg=
+github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp v0.0.0-20220802221933-1fabc3b46601 h1:W7xhAgRtepnWBTmbzb0R+5ikjEYCX1c55SN8HJv5FcI=
+github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp v0.0.0-20220802221933-1fabc3b46601/go.mod h1:JU6yp7mldR7lmftjHPtaDs+Q8xn7l2tMR1XYx5iJELg=
