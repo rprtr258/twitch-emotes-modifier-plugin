@@ -90,7 +90,7 @@ func (ae *AnimationEncoder) AddFrame(img image.Image, duration time.Duration) er
 	if C.WebPAnimEncoderAdd(ae.c, pic, timestamp, nil) == 0 {
 		return fmt.Errorf(
 			"encoding error: %d - %s",
-			int(pic.error_code),
+			pic.error_code,
 			C.GoString(C.WebPAnimEncoderGetError(ae.c)),
 		)
 	}
@@ -116,7 +116,8 @@ func (ae *AnimationEncoder) Assemble() ([]byte, error) {
 	size := int(data.size)
 	out := make([]byte, size)
 	n := copy(
-		out, C.GoBytes(
+		out,
+		C.GoBytes(
 			unsafe.Pointer(data.bytes),
 			C.int(size),
 		),

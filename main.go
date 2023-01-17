@@ -11,31 +11,9 @@ import (
 
 	"github.com/hedhyw/rex/pkg/rex"
 
+	"github.com/rprtr258/twitch-emotes-modifier-plugin/modifiers"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 )
-
-type modifier interface {
-	modify() (*webp.AnimationEncoder, error)
-}
-
-func runModifier(m modifier, outID string) error {
-	enc, err := m.modify()
-	if err != nil {
-		return err
-	}
-	defer enc.Close()
-
-	data, err := enc.Assemble()
-	if err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(outID+".webp", data, 0666); err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func loadEmote(id string) (*webp.Animation, error) {
 	data, err := os.ReadFile(id + ".webp")
@@ -93,7 +71,7 @@ func loadEmoteFilename(emoteId string) (filename string, err error) {
 
 func unaryModifier(
 	inID, outID string,
-	construct func(*webp.Animation) modifier,
+	construct func(*webp.Animation) modifiers.Modifier,
 ) error {
 	img, err := loadEmote(inID)
 	if err != nil {
@@ -101,12 +79,12 @@ func unaryModifier(
 	}
 
 	m := construct(img)
-	return runModifier(m, outID)
+	return modifiers.Run(m, outID)
 }
 
 func binaryModifier(
 	firstID, secondID, outID string,
-	construct func(a, b *webp.Animation) modifier,
+	construct func(a, b *webp.Animation) modifiers.Modifier,
 ) error {
 	firstImg, err := loadEmote(firstID)
 	if err != nil {
@@ -119,7 +97,7 @@ func binaryModifier(
 	}
 
 	m := construct(firstImg, secondImg)
-	return runModifier(m, outID)
+	return modifiers.Run(m, outID)
 }
 
 type mergedTimestamp struct {
@@ -217,7 +195,7 @@ func (m stackXModifier) stack(a, b *image.RGBA) *image.RGBA {
 }
 
 // TODO: fix animation slowdown for some reason for >dup>revt>stackx and >dup>revt>stacky
-func (m stackXModifier) modify() (*webp.AnimationEncoder, error) {
+func (m stackXModifier) Modify() (*webp.AnimationEncoder, error) {
 	if m.first.CanvasHeight != m.second.CanvasHeight {
 		return nil, fmt.Errorf("unequal heights on x-stack: %d and %d", m.first.CanvasHeight, m.second.CanvasHeight)
 	}
@@ -268,7 +246,7 @@ func (m stackYModifier) stack(a, b *image.RGBA) *image.RGBA {
 	}
 }
 
-func (m stackYModifier) modify() (*webp.AnimationEncoder, error) {
+func (m stackYModifier) Modify() (*webp.AnimationEncoder, error) {
 	if m.first.CanvasWidth != m.second.CanvasWidth {
 		return nil, fmt.Errorf("unequal widths on y-stack: %d and %d", m.first.CanvasWidth, m.second.CanvasWidth)
 	}
@@ -317,7 +295,7 @@ func (m stackTModifier) append(enc *webp.AnimationEncoder, img *webp.Animation) 
 	return nil
 }
 
-func (m stackTModifier) modify() (*webp.AnimationEncoder, error) {
+func (m stackTModifier) Modify() (*webp.AnimationEncoder, error) {
 	enc, err := webp.NewAnimationEncoder(m.first.CanvasWidth, m.first.CanvasHeight, 0, 0)
 	if err != nil {
 		return nil, err
@@ -338,7 +316,7 @@ type overModifier struct {
 	first, second *webp.Animation
 }
 
-func (m overModifier) modify() (*webp.AnimationEncoder, error) {
+func (m overModifier) Modify() (*webp.AnimationEncoder, error) {
 	mergedTimestamps := mergeTimeSeries(m.first.Timestamp, m.second.Timestamp)
 
 	enc, err := webp.NewAnimationEncoder(m.first.CanvasHeight, m.first.CanvasWidth, 0, 0)
@@ -388,7 +366,7 @@ type reverseTModifier struct {
 	in *webp.Animation
 }
 
-func (m reverseTModifier) modify() (*webp.AnimationEncoder, error) {
+func (m reverseTModifier) Modify() (*webp.AnimationEncoder, error) {
 	enc, err := webp.NewAnimationEncoder(m.in.CanvasWidth, m.in.CanvasHeight, 0, 0)
 	if err != nil {
 		return nil, err
@@ -414,7 +392,7 @@ type reverseXModifier struct {
 	in *webp.Animation
 }
 
-func (m reverseXModifier) modify() (*webp.AnimationEncoder, error) {
+func (m reverseXModifier) Modify() (*webp.AnimationEncoder, error) {
 	enc, err := webp.NewAnimationEncoder(m.in.CanvasWidth, m.in.CanvasHeight, 0, 0)
 	if err != nil {
 		return nil, err
@@ -458,7 +436,7 @@ type reverseYModifier struct {
 	in *webp.Animation
 }
 
-func (m reverseYModifier) modify() (*webp.AnimationEncoder, error) {
+func (m reverseYModifier) Modify() (*webp.AnimationEncoder, error) {
 	enc, err := webp.NewAnimationEncoder(m.in.CanvasWidth, m.in.CanvasHeight, 0, 0)
 	if err != nil {
 		return nil, err
@@ -515,7 +493,7 @@ func (s *stack) pop() string {
 func unaryTokenHandler(
 	stack *stack,
 	suffix string,
-	construct func(*webp.Animation) modifier,
+	construct func(*webp.Animation) modifiers.Modifier,
 ) error {
 	arg := stack.pop()
 	emote, err := loadEmoteFilename(arg)
@@ -538,7 +516,7 @@ func unaryTokenHandler(
 func binaryTokenHandler(
 	stack *stack,
 	suffix string,
-	construct func(a, b *webp.Animation) modifier,
+	construct func(a, b *webp.Animation) modifiers.Modifier,
 ) error {
 	second := stack.pop()
 	first := stack.pop()
@@ -595,7 +573,7 @@ func run() error {
 			if err := unaryTokenHandler(
 				&stack,
 				token,
-				func(in *webp.Animation) modifier {
+				func(in *webp.Animation) modifiers.Modifier {
 					return reverseXModifier{
 						in: in,
 					}
@@ -607,7 +585,7 @@ func run() error {
 			if err := unaryTokenHandler(
 				&stack,
 				token,
-				func(in *webp.Animation) modifier {
+				func(in *webp.Animation) modifiers.Modifier {
 					return reverseYModifier{
 						in: in,
 					}
@@ -619,7 +597,7 @@ func run() error {
 			if err := unaryTokenHandler(
 				&stack,
 				token,
-				func(in *webp.Animation) modifier {
+				func(in *webp.Animation) modifiers.Modifier {
 					return reverseTModifier{
 						in: in,
 					}
@@ -631,7 +609,7 @@ func run() error {
 			if err := binaryTokenHandler(
 				&stack,
 				token,
-				func(a, b *webp.Animation) modifier {
+				func(a, b *webp.Animation) modifiers.Modifier {
 					return overModifier{
 						first:  a,
 						second: b,
@@ -644,7 +622,7 @@ func run() error {
 			if err := binaryTokenHandler(
 				&stack,
 				token,
-				func(a, b *webp.Animation) modifier {
+				func(a, b *webp.Animation) modifiers.Modifier {
 					return stackXModifier{
 						first:  a,
 						second: b,
@@ -657,7 +635,7 @@ func run() error {
 			if err := binaryTokenHandler(
 				&stack,
 				token,
-				func(a, b *webp.Animation) modifier {
+				func(a, b *webp.Animation) modifiers.Modifier {
 					return stackYModifier{
 						first:  a,
 						second: b,
@@ -670,7 +648,7 @@ func run() error {
 			if err := binaryTokenHandler(
 				&stack,
 				token,
-				func(a, b *webp.Animation) modifier {
+				func(a, b *webp.Animation) modifiers.Modifier {
 					return stackTModifier{
 						first:  a,
 						second: b,
