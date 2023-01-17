@@ -12,37 +12,6 @@ import (
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/repository"
 )
 
-func unaryModifier(
-	inID, outID string,
-	construct func(*webp.Animation) modifiers.Modifier,
-) error {
-	img, err := repository.LoadCachedEmote(inID)
-	if err != nil {
-		return err
-	}
-
-	m := construct(img)
-	return modifiers.Run(m, outID)
-}
-
-func binaryModifier(
-	firstID, secondID, outID string,
-	construct func(a, b *webp.Animation) modifiers.Modifier,
-) error {
-	firstImg, err := repository.LoadCachedEmote(firstID)
-	if err != nil {
-		return err
-	}
-
-	secondImg, err := repository.LoadCachedEmote(secondID)
-	if err != nil {
-		return err
-	}
-
-	m := construct(firstImg, secondImg)
-	return modifiers.Run(m, outID)
-}
-
 type stack []string
 
 func (s *stack) push(elem string) {
@@ -73,7 +42,14 @@ func unaryTokenHandler(
 	// TODO: maybe use hash instead?
 	newEmote := fmt.Sprintf("%s%s", emote, suffix)
 
-	if err := unaryModifier(emote, newEmote, construct); err != nil {
+	img, err := repository.LoadCachedEmote(emote)
+	if err != nil {
+		return err
+	}
+
+	m := construct(img)
+
+	if err := modifiers.Run(m, newEmote); err != nil {
 		return err
 	}
 
@@ -102,12 +78,22 @@ func binaryTokenHandler(
 		return err
 	}
 
+	firstImg, err := repository.LoadCachedEmote(firstEmote)
+	if err != nil {
+		return err
+	}
+
+	secondImg, err := repository.LoadCachedEmote(secondEmote)
+	if err != nil {
+		return err
+	}
+
+	m := construct(firstImg, secondImg)
+
 	newEmote := fmt.Sprintf("%s,%s%s", first, second, suffix)
+
 	// TODO: do not re-evaluate if already exists (cache)
-	if err := binaryModifier(
-		firstEmote, secondEmote, newEmote,
-		construct,
-	); err != nil {
+	if err := modifiers.Run(m, newEmote); err != nil {
 		return err
 	}
 
