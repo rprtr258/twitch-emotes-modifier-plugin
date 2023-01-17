@@ -52,14 +52,10 @@ func SaveObject(enc *webp.AnimationEncoder, objectID string) error {
 	return nil
 }
 
-func getStoredID(emoteID string) (string, bool) {
+func isCached(emoteID string) bool {
 	imageFilename := emoteID + ".webp"
-
-	if _, err := os.Stat(imageFilename); err == nil {
-		return imageFilename, true
-	}
-
-	return "", false
+	_, err := os.Stat(imageFilename)
+	return err == nil
 }
 
 func download7tvEmote(emoteID, outObjectID string) ([]byte, error) {
@@ -88,9 +84,8 @@ func download7tvEmote(emoteID, outObjectID string) ([]byte, error) {
 
 // TODO: load only if id
 func Emote(emoteID string) (*webp.Animation, error) {
-	imageFilename, ok := getStoredID(emoteID)
-	if !ok {
-		data, err := download7tvEmote(emoteID, imageFilename)
+	if !isCached(emoteID) {
+		data, err := download7tvEmote(emoteID, emoteID)
 		if err != nil {
 			return nil, err
 		}
@@ -100,5 +95,5 @@ func Emote(emoteID string) (*webp.Animation, error) {
 		}
 	}
 
-	return loadObject(imageFilename)
+	return loadObject(emoteID)
 }
