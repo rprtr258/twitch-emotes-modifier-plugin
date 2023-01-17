@@ -34,26 +34,26 @@ func unaryTokenHandler(
 	construct func(*webp.Animation) modifiers.Modifier,
 ) error {
 	arg := stack.pop()
-	emote, err := repository.DownloadEmote(arg)
-	if err != nil {
-		return err
-	}
 
-	// TODO: maybe use hash instead?
-	newEmote := fmt.Sprintf("%s%s", emote, suffix)
-
-	img, err := repository.LoadCachedEmote(emote)
+	img, err := repository.Emote(arg)
 	if err != nil {
 		return err
 	}
 
 	m := construct(img)
 
-	if err := modifiers.Run(m, newEmote); err != nil {
+	enc, err := m.Modify()
+	if err != nil {
 		return err
 	}
 
-	stack.push(newEmote)
+	newEmoteID := arg + suffix
+
+	if err := repository.SaveObject(enc, newEmoteID); err != nil {
+		return err
+	}
+
+	stack.push(newEmoteID)
 
 	return nil
 }
@@ -63,37 +63,31 @@ func binaryTokenHandler(
 	suffix string,
 	construct func(a, b *webp.Animation) modifiers.Modifier,
 ) error {
+	// TODO: assert stack size
 	second := stack.pop()
 	first := stack.pop()
 
-	// TODO: assert stack size
-	// TODO: load only if id
-	firstEmote, err := repository.DownloadEmote(first)
+	firstImg, err := repository.Emote(first)
 	if err != nil {
 		return err
 	}
 
-	secondEmote, err := repository.DownloadEmote(second)
-	if err != nil {
-		return err
-	}
-
-	firstImg, err := repository.LoadCachedEmote(firstEmote)
-	if err != nil {
-		return err
-	}
-
-	secondImg, err := repository.LoadCachedEmote(secondEmote)
+	secondImg, err := repository.Emote(second)
 	if err != nil {
 		return err
 	}
 
 	m := construct(firstImg, secondImg)
 
+	enc, err := m.Modify()
+	if err != nil {
+		return err
+	}
+
 	newEmote := fmt.Sprintf("%s,%s%s", first, second, suffix)
 
 	// TODO: do not re-evaluate if already exists (cache)
-	if err := modifiers.Run(m, newEmote); err != nil {
+	if err := repository.SaveObject(enc, newEmote); err != nil {
 		return err
 	}
 
