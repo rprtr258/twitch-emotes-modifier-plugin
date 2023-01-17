@@ -8,6 +8,7 @@ import (
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 )
 
+// TODO: maybe rename to stackz
 type Over struct {
 	First, Second *webp.Animation
 }
