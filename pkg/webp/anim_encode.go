@@ -30,9 +30,9 @@ import (
 
 // AnimationEncoder encodes multiple images into an animated WebP.
 type AnimationEncoder struct {
-	opts     C.WebPAnimEncoderOptions
-	c        *C.WebPAnimEncoder
-	duration time.Duration
+	opts          C.WebPAnimEncoderOptions
+	c             *C.WebPAnimEncoder
+	lastTimestamp time.Duration
 }
 
 // NewAnimationEncoder initializes a new encoder.
@@ -54,7 +54,7 @@ func NewAnimationEncoder(width, height, kmin, kmax int) (*AnimationEncoder, erro
 }
 
 // AddFrame adds a frame to the encoder.
-func (ae *AnimationEncoder) AddFrame(img image.Image, duration time.Duration) error {
+func (ae *AnimationEncoder) AddFrame(img image.Image, timestamp time.Duration) error {
 	pic := C.calloc_WebPPicture()
 	if pic == nil {
 		return errors.New("could not allocate webp picture")
@@ -84,10 +84,13 @@ func (ae *AnimationEncoder) AddFrame(img image.Image, duration time.Duration) er
 		return errors.New("unsupported image type")
 	}
 
-	timestamp := C.int(ae.duration / time.Millisecond)
-	ae.duration += duration
+	ts := C.int(ae.lastTimestamp / time.Millisecond)
 
-	if C.WebPAnimEncoderAdd(ae.c, pic, timestamp, nil) == 0 {
+	if ae.lastTimestamp < timestamp {
+		ae.lastTimestamp = timestamp
+	}
+
+	if C.WebPAnimEncoderAdd(ae.c, pic, ts, nil) == 0 {
 		return fmt.Errorf(
 			"encoding error: %d - %s",
 			pic.error_code,
@@ -101,7 +104,7 @@ func (ae *AnimationEncoder) AddFrame(img image.Image, duration time.Duration) er
 // Assemble assembles all frames into animated WebP.
 func (ae *AnimationEncoder) Assemble() ([]byte, error) {
 	// add final empty frame
-	if C.WebPAnimEncoderAdd(ae.c, nil, C.int(ae.duration/time.Millisecond), nil) == 0 {
+	if C.WebPAnimEncoderAdd(ae.c, nil, C.int(ae.lastTimestamp/time.Millisecond), nil) == 0 {
 		return nil, errors.New("couldn't add final empty frame")
 	}
 

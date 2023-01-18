@@ -4,6 +4,7 @@ import (
 	"image"
 	"time"
 
+	"github.com/rprtr258/twitch-emotes-modifier-plugin/internal"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 )
 
@@ -19,14 +20,7 @@ func (m ReverseX) Modify() (*webp.AnimationEncoder, error) {
 		return nil, err
 	}
 
-	for i := 0; i < m.In.FrameCount; i++ {
-		durationMillis := m.In.Timestamp[i]
-		if i > 0 {
-			durationMillis -= m.In.Timestamp[i-1]
-		}
-
-		frame := m.In.Image[i]
-
+	for i, frame := range m.In.Image {
 		buf := append([]uint8{}, frame.Pix...)
 		for row := 0; row < m.In.CanvasHeight; row++ {
 			stride := row * frame.Stride
@@ -44,7 +38,7 @@ func (m ReverseX) Modify() (*webp.AnimationEncoder, error) {
 			Rect:   frame.Rect,
 		}
 
-		if err := enc.AddFrame(res, time.Duration(durationMillis)*time.Millisecond); err != nil {
+		if err := enc.AddFrame(res, time.Duration(m.In.Timestamp[i])*time.Millisecond); err != nil {
 			enc.Close()
 			return nil, err
 		}
@@ -63,14 +57,7 @@ func (m ReverseY) Modify() (*webp.AnimationEncoder, error) {
 		return nil, err
 	}
 
-	for i := 0; i < m.In.FrameCount; i++ {
-		durationMillis := m.In.Timestamp[i]
-		if i > 0 {
-			durationMillis -= m.In.Timestamp[i-1]
-		}
-
-		frame := m.In.Image[i]
-
+	for i, frame := range m.In.Image {
 		buf := append([]uint8{}, frame.Pix...)
 		for i, j := 0, m.In.CanvasHeight-1; i < j; i, j = i+1, j-1 {
 			strideI := i * frame.Stride
@@ -86,7 +73,7 @@ func (m ReverseY) Modify() (*webp.AnimationEncoder, error) {
 			Rect:   frame.Rect,
 		}
 
-		if err := enc.AddFrame(res, time.Duration(durationMillis)*time.Millisecond); err != nil {
+		if err := enc.AddFrame(res, time.Duration(m.In.Timestamp[i])*time.Millisecond); err != nil {
 			enc.Close()
 			return nil, err
 		}
@@ -105,13 +92,10 @@ func (m ReverseT) Modify() (*webp.AnimationEncoder, error) {
 		return nil, err
 	}
 
-	for i := m.In.FrameCount - 1; i >= 0; i-- {
-		durationMillis := m.In.Timestamp[i]
-		if i > 0 {
-			durationMillis -= m.In.Timestamp[i-1]
-		}
+	timestamps := internal.ReverseTimestamps(m.In.Timestamp)
 
-		if err := enc.AddFrame(m.In.Image[i], time.Duration(durationMillis)*time.Millisecond); err != nil {
+	for i, frame := range m.In.Image {
+		if err := enc.AddFrame(frame, time.Duration(timestamps[i])*time.Millisecond); err != nil {
 			enc.Close()
 			return nil, err
 		}

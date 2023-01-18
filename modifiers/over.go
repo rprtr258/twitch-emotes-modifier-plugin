@@ -22,12 +22,7 @@ func (m Over) Modify() (*webp.AnimationEncoder, error) {
 	}
 
 	buf := make([]uint8, len(m.First.Image[0].Pix))
-	for i, ts := range mergedTimestamps {
-		durationMillis := ts.Timestamp
-		if i > 0 {
-			durationMillis -= mergedTimestamps[i-1].Timestamp
-		}
-
+	for _, ts := range mergedTimestamps {
 		firstFrame := m.First.Image[ts.Frames[0]]
 		secondFrame := m.Second.Image[ts.Frames[1]]
 
@@ -50,7 +45,7 @@ func (m Over) Modify() (*webp.AnimationEncoder, error) {
 			Rect:   firstFrame.Rect,
 		}
 
-		if err := enc.AddFrame(firstFrameCopy, time.Duration(durationMillis)*time.Millisecond); err != nil {
+		if err := enc.AddFrame(firstFrameCopy, time.Duration(ts.Timestamp)*time.Millisecond); err != nil {
 			enc.Close()
 			return nil, err
 		}

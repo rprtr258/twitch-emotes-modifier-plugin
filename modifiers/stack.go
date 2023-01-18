@@ -39,22 +39,14 @@ func (m StackX) Modify() (*webp.AnimationEncoder, error) {
 	}
 
 	mergedTimestamps := internal.MergeTimeSeries(m.First.Timestamp, m.Second.Timestamp)
-	fmt.Println(m.First.Timestamp)
-	fmt.Println(m.Second.Timestamp)
-	fmt.Println(mergedTimestamps)
 
 	// TODO: cache same frames stacked
-	for i, ts := range mergedTimestamps {
-		durationMillis := ts.Timestamp
-		if i > 0 {
-			durationMillis -= mergedTimestamps[i-1].Timestamp
-		}
-
+	for _, ts := range mergedTimestamps {
 		frame := m.stack(
 			m.First.Image[ts.Frames[0]],
 			m.Second.Image[ts.Frames[1]],
 		)
-		if err := enc.AddFrame(frame, time.Duration(durationMillis)*time.Millisecond); err != nil {
+		if err := enc.AddFrame(frame, time.Duration(ts.Timestamp)*time.Millisecond); err != nil {
 			enc.Close()
 			return nil, err
 		}
@@ -92,14 +84,9 @@ func (m StackY) Modify() (*webp.AnimationEncoder, error) {
 	mergedTimestamps := internal.MergeTimeSeries(m.First.Timestamp, m.Second.Timestamp)
 
 	// TODO: cache same frames stacked
-	for i, ts := range mergedTimestamps {
-		durationMillis := ts.Timestamp
-		if i > 0 {
-			durationMillis -= mergedTimestamps[i-1].Timestamp
-		}
-
+	for _, ts := range mergedTimestamps {
 		frame := m.stack(m.First.Image[ts.Frames[0]], m.Second.Image[ts.Frames[1]])
-		if err := enc.AddFrame(frame, time.Duration(durationMillis)*time.Millisecond); err != nil {
+		if err := enc.AddFrame(frame, time.Duration(ts.Timestamp)*time.Millisecond); err != nil {
 			enc.Close()
 			return nil, err
 		}
@@ -112,14 +99,9 @@ type StackT struct {
 	First, Second *webp.Animation
 }
 
-func (m StackT) append(enc *webp.AnimationEncoder, img *webp.Animation) error {
+func (m StackT) append(enc *webp.AnimationEncoder, img *webp.Animation, offset int) error {
 	for i, frame := range img.Image {
-		durationMillis := img.Timestamp[i]
-		if i > 0 {
-			durationMillis -= img.Timestamp[i-1]
-		}
-
-		if err := enc.AddFrame(frame, time.Duration(durationMillis)*time.Millisecond); err != nil {
+		if err := enc.AddFrame(frame, time.Duration(img.Timestamp[i]+offset)*time.Millisecond); err != nil {
 			enc.Close()
 			return err
 		}
@@ -134,11 +116,11 @@ func (m StackT) Modify() (*webp.AnimationEncoder, error) {
 		return nil, err
 	}
 
-	if err := m.append(enc, m.First); err != nil {
+	if err := m.append(enc, m.First, 0); err != nil {
 		return nil, err
 	}
 
-	if err := m.append(enc, m.Second); err != nil {
+	if err := m.append(enc, m.Second, m.First.Timestamp[m.First.FrameCount-1]); err != nil {
 		return nil, err
 	}
 
