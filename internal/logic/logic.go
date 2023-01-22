@@ -22,21 +22,33 @@ func hash(request string) string {
 	return res
 }
 
-type stack []string
+type stack struct {
+	elems []string
+}
+
+func newStack() stack {
+	return stack{
+		elems: nil,
+	}
+}
+
+func (s stack) len() int {
+	return len(s.elems)
+}
 
 func (s *stack) push(elem string) {
-	*s = append(*s, elem)
+	s.elems = append(s.elems, elem)
 }
 
 func (s *stack) pop() string {
-	if len(*s) == 0 {
+	if len(s.elems) == 0 {
 		// TODO: somehow rewrite
 		log.Println("can't pop from empty stack")
 		return ""
 	}
 
-	res := (*s)[len(*s)-1]
-	*s = (*s)[:len(*s)-1]
+	res := s.elems[len(s.elems)-1]
+	s.elems = s.elems[:len(s.elems)-1]
 	return res
 }
 
@@ -145,7 +157,7 @@ func ProcessQuery(query string) (string, error) {
 		rex.Common.Text(`>dup`),
 		rex.Common.Text(`>swap`),
 	)).MustCompile()
-	stack := stack([]string{})
+	stack := newStack()
 	// TODO: assert all characters are used in tokenizing
 	for _, token := range tokenRE.FindAllString(query, -1) {
 		fmt.Println("TOKEN", token)
@@ -331,9 +343,9 @@ func ProcessQuery(query string) (string, error) {
 		}
 	}
 
-	if len(stack) != 1 {
+	if stack.len() != 1 {
 		return "", fmt.Errorf("stack has more than single item (or none): %v", stack)
 	}
 
-	return stack[0], nil
+	return stack.pop(), nil
 }
