@@ -21,6 +21,15 @@ body {
 	justify-content: center;
 	flex-direction: column;
 }
+form {
+	width: 90%;
+}
+textarea {
+	width: 90%;
+}
+button {
+	width: 9%;
+}
 </style></head>
 <body>
 	<form action="/" method="POST">

@@ -1,6 +1,8 @@
 package logic
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"time"
@@ -11,6 +13,12 @@ import (
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/repository"
 )
+
+func hash(request string) string {
+	h := sha1.New()
+	h.Write([]byte(request))
+	return hex.EncodeToString(h.Sum(nil))
+}
 
 type stack []string
 
@@ -46,7 +54,7 @@ func unaryTokenHandler(
 
 	defer bench(fmt.Sprintf("%s %s", suffix, arg))()
 
-	newEmote := arg + suffix
+	newEmote := hash(arg + suffix)
 	if !repository.IsCached(newEmote) {
 		img, err := repository.Emote(arg)
 		if err != nil {
@@ -91,8 +99,7 @@ func binaryTokenHandler(
 		return err
 	}
 
-	newEmote := fmt.Sprintf("%s,%s%s", first, second, suffix)
-
+	newEmote := hash(fmt.Sprintf("%s,%s%s", first, second, suffix))
 	if !repository.IsCached(newEmote) {
 		m := construct(firstImg, secondImg)
 
