@@ -2,6 +2,7 @@ package logic
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/hedhyw/rex/pkg/rex"
@@ -19,7 +20,9 @@ func (s *stack) push(elem string) {
 
 func (s *stack) pop() string {
 	if len(*s) == 0 {
-		panic("can't pop from empty stack")
+		// TODO: somehow rewrite
+		log.Println("can't pop from empty stack")
+		return ""
 	}
 
 	res := (*s)[len(*s)-1]
@@ -131,6 +134,7 @@ func ProcessQuery(query string) (string, error) {
 		rex.Common.Text(`>dscaley`),
 		rex.Common.Text(`>dscalet`),
 		rex.Common.Text(`>dup`),
+		rex.Common.Text(`>swap`),
 	)).MustCompile()
 	stack := stack([]string{})
 	// TODO: assert all characters are used in tokenizing
@@ -308,6 +312,11 @@ func ProcessQuery(query string) (string, error) {
 			item := stack.pop()
 			stack.push(item)
 			stack.push(item)
+		case ">swap":
+			first := stack.pop()
+			second := stack.pop()
+			stack.push(first)
+			stack.push(second)
 		default:
 			stack.push(token)
 		}
