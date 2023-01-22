@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/hedhyw/rex/pkg/rex"
@@ -55,13 +56,35 @@ func (s *stack) push(elem string) {
 	s.elems = append(s.elems, elem)
 }
 
+func (s *stack) popNum() float32 {
+	if s.err != nil {
+		return 0
+	}
+
+	if len(s.elems) == 0 {
+		s.err = errors.New("tried to pop number from empty stack")
+		return 0
+	}
+
+	poped := s.elems[len(s.elems)-1]
+	s.elems = s.elems[:len(s.elems)-1]
+
+	res, err := strconv.ParseFloat(poped, 32)
+	if err != nil {
+		s.err = err
+		return 0
+	}
+
+	return float32(res)
+}
+
 func (s *stack) pop() string {
 	if s.err != nil {
 		return ""
 	}
 
 	if len(s.elems) == 0 {
-		s.err = errors.New("can't pop from empty stack")
+		s.err = errors.New("tried to pop from empty stack")
 		return ""
 	}
 
