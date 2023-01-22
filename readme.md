@@ -72,6 +72,6 @@ Binary modifiers take two emotes from stack, modifies them into single emote, th
 ## Known limitations
 - images must match exactly by size, e.g. when `over` - they must be exactly of same size, when `stackx` - must be same height, etc.
 - merged animated emotes may produce somehow laggy animations with frames longer than they must be. Not sure why, because of go bindings for `libwebp`, because of `libwebp`, because of format limitations or what
-- very early version, e.g. trying to stack when there are no items to stack will lead to cryptic message, so use carefully
+- very early version, random errors may occur
 - not optimised in any way, larger emotes or emotes with high number of frames takes proportionally longer time to process
 

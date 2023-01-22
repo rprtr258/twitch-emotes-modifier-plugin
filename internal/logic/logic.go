@@ -3,6 +3,7 @@ package logic
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -24,26 +25,43 @@ func hash(request string) string {
 
 type stack struct {
 	elems []string
+	err   error
 }
 
 func newStack() stack {
 	return stack{
 		elems: nil,
+		err:   nil,
 	}
 }
 
+func (s stack) Err() error {
+	return s.err
+}
+
 func (s stack) len() int {
+	if s.err != nil {
+		return 0
+	}
+
 	return len(s.elems)
 }
 
 func (s *stack) push(elem string) {
+	if s.err != nil {
+		return
+	}
+
 	s.elems = append(s.elems, elem)
 }
 
 func (s *stack) pop() string {
+	if s.err != nil {
+		return ""
+	}
+
 	if len(s.elems) == 0 {
-		// TODO: somehow rewrite
-		log.Println("can't pop from empty stack")
+		s.err = errors.New("can't pop from empty stack")
 		return ""
 	}
 
@@ -341,6 +359,10 @@ func ProcessQuery(query string) (string, error) {
 		default:
 			stack.push(token)
 		}
+	}
+
+	if err := stack.Err(); err != nil {
+		return "", err
 	}
 
 	if stack.len() != 1 {
