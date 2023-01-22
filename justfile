@@ -1,4 +1,4 @@
-APP:="go run main.go"
+APP:="go run cmd/twemod/twemod.go"
 
 # bump dependencies
 @bump:
