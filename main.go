@@ -126,6 +126,12 @@ func run() error {
 		rex.Common.Text(`>stackx`),
 		rex.Common.Text(`>stacky`),
 		rex.Common.Text(`>stackt`),
+		rex.Common.Text(`>iscalex`),
+		rex.Common.Text(`>iscaley`),
+		rex.Common.Text(`>iscalet`),
+		rex.Common.Text(`>dscalex`),
+		rex.Common.Text(`>dscaley`),
+		rex.Common.Text(`>dscalet`),
 		rex.Common.Text(`>dup`),
 	)).MustCompile()
 	stack := stack([]string{})
@@ -217,6 +223,84 @@ func run() error {
 					return modifiers.StackT{
 						First:  a,
 						Second: b,
+					}
+				},
+			); err != nil {
+				return err
+			}
+		case ">iscalex":
+			if err := unaryTokenHandler(
+				&stack,
+				token,
+				func(x *webp.Animation) modifiers.Modifier {
+					return modifiers.ScaleX{
+						In:    x,
+						Scale: 2.0,
+					}
+				},
+			); err != nil {
+				return err
+			}
+		case ">iscaley":
+			if err := unaryTokenHandler(
+				&stack,
+				token,
+				func(x *webp.Animation) modifiers.Modifier {
+					return modifiers.ScaleY{
+						In:    x,
+						Scale: 2.0,
+					}
+				},
+			); err != nil {
+				return err
+			}
+		case ">iscalet":
+			if err := unaryTokenHandler(
+				&stack,
+				token,
+				func(x *webp.Animation) modifiers.Modifier {
+					return modifiers.ScaleT{
+						In:    x,
+						Scale: 2.0,
+					}
+				},
+			); err != nil {
+				return err
+			}
+		case ">dscalex":
+			if err := unaryTokenHandler(
+				&stack,
+				token,
+				func(x *webp.Animation) modifiers.Modifier {
+					return modifiers.ScaleX{
+						In:    x,
+						Scale: 0.5,
+					}
+				},
+			); err != nil {
+				return err
+			}
+		case ">dscaley":
+			if err := unaryTokenHandler(
+				&stack,
+				token,
+				func(x *webp.Animation) modifiers.Modifier {
+					return modifiers.ScaleY{
+						In:    x,
+						Scale: 0.5,
+					}
+				},
+			); err != nil {
+				return err
+			}
+		case ">dscalet":
+			if err := unaryTokenHandler(
+				&stack,
+				token,
+				func(x *webp.Animation) modifiers.Modifier {
+					return modifiers.ScaleT{
+						In:    x,
+						Scale: 0.5,
 					}
 				},
 			); err != nil {
