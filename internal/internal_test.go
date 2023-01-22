@@ -17,6 +17,11 @@ func TestReverseTimestamps(t *testing.T) {
 			arg:  []int{0},
 			want: []int{0},
 		},
+		{
+			name: "simple",
+			arg:  []int{1, 3, 6},
+			want: []int{3, 5, 6},
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			got := ReverseTimestamps(test.arg)

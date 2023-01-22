@@ -88,11 +88,15 @@ func ReverseTimestamps(timestamps []int) []int {
 		res,
 		timestamps[n-1]-timestamps[n-2],
 	)
-	for i := 1; i < n; i++ {
+	for i := 1; i < n-1; i++ {
 		res = append(
 			res,
-			res[i-1]+timestamps[n-i]-timestamps[n-i-1],
+			res[i-1]+timestamps[n-i-1]-timestamps[n-i-2],
 		)
 	}
+	res = append(
+		res,
+		res[n-2]+timestamps[0],
+	)
 	return res
 }
