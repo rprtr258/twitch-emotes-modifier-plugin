@@ -17,7 +17,9 @@ import (
 func hash(request string) string {
 	h := sha1.New()
 	h.Write([]byte(request))
-	return hex.EncodeToString(h.Sum(nil))
+	res := hex.EncodeToString(h.Sum(nil))
+	log.Println(res, "IS", request)
+	return res
 }
 
 type stack []string

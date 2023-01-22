@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -57,6 +58,15 @@ func renderIndexPage(query string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	sort.Slice(
+		entries,
+		func(i, j int) bool {
+			ii, _ := entries[i].Info()
+			jj, _ := entries[j].Info()
+			return ii.ModTime().After(jj.ModTime())
+		},
+	)
 
 	imgs := make([]string, 0, len(entries))
 	for _, entry := range entries {
