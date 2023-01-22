@@ -1,6 +1,7 @@
 package main
 
 import (
+	"html/template"
 	"net/http"
 	"os"
 	"strings"
@@ -10,28 +11,63 @@ import (
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/internal/logic"
 )
 
-const _indexPage = `<!DOCTYPE html><html>
+var _indexPage = template.Must(template.New("").Parse(`<!DOCTYPE html><html>
 <head><style>
 body {
-	background: black;
+	background: #040404;
+	color: white;
 	display: flex;
 	align-items: center;
-	height: 90vh;
 	justify-content: center;
 	flex-direction: column;
 }
 </style></head>
 <body>
 	<form action="/" method="POST">
-		<textarea name="q">%</textarea>
+		<textarea name="q">{{.Query}}</textarea>
 		<button>send</button>
 	</form>
-	<img src="/static/%.webp" />
+	{{range .Imgs}}
+		<span>{{.}}</span>
+		<img src="/static/{{.}}.webp" />
+	{{end}}
 </body>
-</html>`
+</html>`))
+
+type indexPage struct {
+	Query string
+	Imgs  []string
+}
 
 func getFileSystem() http.FileSystem {
 	return http.FS(os.DirFS("."))
+}
+
+func renderIndexPage(query string) (string, error) {
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		return "", err
+	}
+
+	imgs := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		name, _, ok := strings.Cut(entry.Name(), ".webp")
+		if !ok {
+			continue
+		}
+
+		imgs = append(imgs, name)
+	}
+
+	sb := strings.Builder{}
+	if err := _indexPage.Execute(&sb, indexPage{
+		Query: query,
+		Imgs:  imgs,
+	}); err != nil {
+		return "", err
+	}
+
+	return sb.String(), nil
 }
 
 func main() {
@@ -44,15 +80,7 @@ func main() {
 	e.GET(
 		"/",
 		func(c echo.Context) error {
-			return c.HTML(http.StatusOK, _indexPage)
-		},
-	)
-	e.POST(
-		"/",
-		func(c echo.Context) error {
-			query := c.FormValue("q")
-			e.Logger.Error(query)
-			resID, err := logic.ProcessQuery(query)
+			page, err := renderIndexPage("")
 			if err != nil {
 				return c.String(
 					http.StatusInternalServerError,
@@ -60,7 +88,31 @@ func main() {
 				)
 			}
 
-			page := strings.Replace(_indexPage, "%", resID, -1)
+			return c.HTML(http.StatusOK, page)
+		},
+	)
+	e.POST(
+		"/",
+		func(c echo.Context) error {
+			query := c.FormValue("q")
+			e.Logger.Error(query)
+
+			_, err := logic.ProcessQuery(query)
+			if err != nil {
+				return c.String(
+					http.StatusInternalServerError,
+					err.Error(),
+				)
+			}
+
+			page, err := renderIndexPage("")
+			if err != nil {
+				return c.String(
+					http.StatusInternalServerError,
+					err.Error(),
+				)
+			}
+
 			return c.HTML(http.StatusOK, page)
 		},
 	)
