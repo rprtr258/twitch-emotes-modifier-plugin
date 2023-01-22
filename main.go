@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/hedhyw/rex/pkg/rex"
 
@@ -28,12 +29,21 @@ func (s *stack) pop() string {
 	return res
 }
 
+func bench(message string) func() {
+	start := time.Now()
+	return func() {
+		fmt.Println("done", message, "in", time.Since(start).String())
+	}
+}
+
 func unaryTokenHandler(
 	stack *stack,
 	suffix string,
 	construct func(*webp.Animation) modifiers.Modifier,
 ) error {
 	arg := stack.pop()
+
+	defer bench(fmt.Sprintf("%s %s", suffix, arg))()
 
 	img, err := repository.Emote(arg)
 	if err != nil {
@@ -66,6 +76,8 @@ func binaryTokenHandler(
 	// TODO: assert stack size
 	second := stack.pop()
 	first := stack.pop()
+
+	defer bench(fmt.Sprintf("%s %s %s", suffix, first, second))()
 
 	firstImg, err := repository.Emote(first)
 	if err != nil {
