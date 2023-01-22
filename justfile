@@ -9,6 +9,10 @@ APP:="go run cmd/twemod/twemod.go"
 @test:
 	go test ./...
 
+# run reflex/api
+@watch-api:
+	reflex -sr '\.go$' go run cmd/twemod-api/twemod-api.go
+
 # run trollDespair(static),cage(static) sample
 @run-despair-cage:
 	{{APP}} '603caea243b9e100141caf4f,612b180e8560641da7250ce8>over'
