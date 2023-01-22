@@ -45,25 +45,26 @@ func unaryTokenHandler(
 
 	defer bench(fmt.Sprintf("%s %s", suffix, arg))()
 
-	img, err := repository.Emote(arg)
-	if err != nil {
-		return err
+	newEmote := arg + suffix
+	if !repository.IsCached(newEmote) {
+		img, err := repository.Emote(arg)
+		if err != nil {
+			return err
+		}
+
+		m := construct(img)
+
+		enc, err := m.Modify()
+		if err != nil {
+			return err
+		}
+
+		if err := repository.SaveObject(enc, newEmote); err != nil {
+			return err
+		}
 	}
 
-	m := construct(img)
-
-	enc, err := m.Modify()
-	if err != nil {
-		return err
-	}
-
-	newEmoteID := arg + suffix
-
-	if err := repository.SaveObject(enc, newEmoteID); err != nil {
-		return err
-	}
-
-	stack.push(newEmoteID)
+	stack.push(newEmote)
 
 	return nil
 }
@@ -89,18 +90,20 @@ func binaryTokenHandler(
 		return err
 	}
 
-	m := construct(firstImg, secondImg)
-
-	enc, err := m.Modify()
-	if err != nil {
-		return err
-	}
-
 	newEmote := fmt.Sprintf("%s,%s%s", first, second, suffix)
 
-	// TODO: do not re-evaluate if already exists (cache)
-	if err := repository.SaveObject(enc, newEmote); err != nil {
-		return err
+	if !repository.IsCached(newEmote) {
+		m := construct(firstImg, secondImg)
+
+		enc, err := m.Modify()
+		if err != nil {
+			return err
+		}
+
+		// TODO: do not re-evaluate if already exists (cache)
+		if err := repository.SaveObject(enc, newEmote); err != nil {
+			return err
+		}
 	}
 
 	stack.push(newEmote)

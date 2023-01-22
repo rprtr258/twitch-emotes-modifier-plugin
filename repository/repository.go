@@ -52,7 +52,7 @@ func SaveObject(enc *webp.AnimationEncoder, objectID string) error {
 	return nil
 }
 
-func isCached(emoteID string) bool {
+func IsCached(emoteID string) bool {
 	imageFilename := emoteID + ".webp"
 	_, err := os.Stat(imageFilename)
 	return err == nil
@@ -84,7 +84,7 @@ func download7tvEmote(emoteID, outObjectID string) ([]byte, error) {
 
 // TODO: load only if id
 func Emote(emoteID string) (*webp.Animation, error) {
-	if !isCached(emoteID) {
+	if !IsCached(emoteID) {
 		data, err := download7tvEmote(emoteID, emoteID)
 		if err != nil {
 			return nil, err
