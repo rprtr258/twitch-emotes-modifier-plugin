@@ -77,6 +77,10 @@ func MergeTimeSeries(first, second []int) []mergedTimestamp {
 }
 
 func ReverseTimestamps(timestamps []int) []int {
+	if len(timestamps) < 2 {
+		return timestamps
+	}
+
 	n := len(timestamps)
 
 	res := make([]int, 0, n)

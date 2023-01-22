@@ -1,6 +1,7 @@
 package modifiers
 
 import (
+	"fmt"
 	"image"
 	"time"
 
@@ -93,6 +94,8 @@ func (m ReverseT) Modify() (*webp.AnimationEncoder, error) {
 	}
 
 	timestamps := internal.ReverseTimestamps(m.In.Timestamp)
+	fmt.Println(m.In.Timestamp)
+	fmt.Println(timestamps)
 
 	for i, frame := range m.In.Image {
 		if err := enc.AddFrame(frame, time.Duration(timestamps[i])*time.Millisecond); err != nil {
