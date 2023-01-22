@@ -71,7 +71,7 @@ func (s *stack) popNum() float32 {
 
 	res, err := strconv.ParseFloat(poped, 32)
 	if err != nil {
-		s.err = err
+		s.err = fmt.Errorf("failed parsing number: %w", err)
 		return 0
 	}
 
@@ -98,6 +98,41 @@ func bench(message string) func() {
 	return func() {
 		fmt.Println("done", message, "in", time.Since(start).String())
 	}
+}
+
+func linearTokenHandler(
+	stack *stack,
+	suffix string,
+	construct func(float32, *webp.Animation) modifiers.Modifier,
+) error {
+	// TODO: check stack errors after all pops
+	arg := stack.pop()
+	coeff := stack.popNum()
+
+	defer bench(fmt.Sprintf("%s %s", suffix, arg))()
+
+	newEmote := hash(arg + suffix + strconv.FormatFloat(float64(coeff), 'f', -1, 32))
+	if !repository.IsCached(newEmote) {
+		img, err := repository.Emote(arg)
+		if err != nil {
+			return err
+		}
+
+		m := construct(coeff, img)
+
+		enc, err := m.Modify()
+		if err != nil {
+			return err
+		}
+
+		if err := repository.SaveObject(enc, newEmote); err != nil {
+			return err
+		}
+	}
+
+	stack.push(newEmote)
+
+	return nil
 }
 
 func unaryTokenHandler(
@@ -176,10 +211,13 @@ func binaryTokenHandler(
 
 func ProcessQuery(query string) (string, error) {
 	tokenRE := rex.New(rex.Group.Composite(
-		rex.Common.Class( // match emote name
+		// match emote name
+		rex.Common.Class(
 			rex.Chars.Alphanumeric(),
 			rex.Chars.Runes("-_():"),
 		).Repeat().Between(2, 99),
+		rex.Common.Raw(`[0-9]+\.?[0-9]*`),
+		// ids separator
 		rex.Common.Text(`,`),
 		// match modifiers
 		rex.Common.Text(`>over`),
@@ -189,6 +227,9 @@ func ProcessQuery(query string) (string, error) {
 		rex.Common.Text(`>stackx`),
 		rex.Common.Text(`>stacky`),
 		rex.Common.Text(`>stackt`),
+		rex.Common.Text(`>scalex`),
+		rex.Common.Text(`>scaley`),
+		rex.Common.Text(`>scalet`),
 		rex.Common.Text(`>iscalex`),
 		rex.Common.Text(`>iscaley`),
 		rex.Common.Text(`>iscalet`),
@@ -287,6 +328,45 @@ func ProcessQuery(query string) (string, error) {
 					return modifiers.StackT{
 						First:  a,
 						Second: b,
+					}
+				},
+			); err != nil {
+				return "", err
+			}
+		case ">scalex":
+			if err := linearTokenHandler(
+				&stack,
+				token,
+				func(coeff float32, x *webp.Animation) modifiers.Modifier {
+					return modifiers.ScaleX{
+						In:    x,
+						Scale: coeff,
+					}
+				},
+			); err != nil {
+				return "", err
+			}
+		case ">scaley":
+			if err := linearTokenHandler(
+				&stack,
+				token,
+				func(coeff float32, x *webp.Animation) modifiers.Modifier {
+					return modifiers.ScaleY{
+						In:    x,
+						Scale: coeff,
+					}
+				},
+			); err != nil {
+				return "", err
+			}
+		case ">scalet":
+			if err := linearTokenHandler(
+				&stack,
+				token,
+				func(coeff float32, x *webp.Animation) modifiers.Modifier {
+					return modifiers.ScaleT{
+						In:    x,
+						Scale: coeff,
 					}
 				},
 			); err != nil {
