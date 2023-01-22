@@ -128,9 +128,9 @@ func ProcessQuery(query string) (string, error) {
 		rex.Common.Text(`,`),
 		// match modifiers
 		rex.Common.Text(`>over`),
-		rex.Common.Text(`>revt`),
 		rex.Common.Text(`>revx`),
 		rex.Common.Text(`>revy`),
+		rex.Common.Text(`>revt`),
 		rex.Common.Text(`>stackx`),
 		rex.Common.Text(`>stacky`),
 		rex.Common.Text(`>stackt`),
