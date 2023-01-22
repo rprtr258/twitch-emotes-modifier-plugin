@@ -54,25 +54,27 @@ type ScaleY struct {
 }
 
 func (m ScaleY) Modify() (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(m.In.CanvasWidth, m.In.CanvasHeight, 0, 0)
+	newHeight := int(float32(m.In.CanvasHeight) * m.Scale)
+
+	enc, err := webp.NewAnimationEncoder(m.In.CanvasWidth, newHeight, 0, 0)
 	if err != nil {
 		return nil, err
 	}
 
 	for i, frame := range m.In.Image {
-		buf := append([]uint8{}, frame.Pix...)
-		for i, j := 0, m.In.CanvasHeight-1; i < j; i, j = i+1, j-1 {
-			strideI := i * frame.Stride
-			strideJ := j * frame.Stride
-			for k := 0; k < frame.Stride; k++ {
-				buf[strideI+k], buf[strideJ+k] = buf[strideJ+k], buf[strideI+k]
+		buf := make([]uint8, frame.Stride*newHeight)
+		for j := 0; j < newHeight; j++ {
+			for i := 0; i < m.In.CanvasWidth; i++ {
+				for k := 0; k < 4; k++ {
+					buf[j*frame.Stride+i*4+k] = frame.Pix[int(float32(j)/m.Scale)*frame.Stride+i*4+k]
+				}
 			}
 		}
 
 		res := &image.RGBA{
 			Pix:    buf,
 			Stride: frame.Stride,
-			Rect:   frame.Rect,
+			Rect:   image.Rect(0, 0, m.In.CanvasWidth, newHeight),
 		}
 
 		if err := enc.AddFrame(res, time.Duration(m.In.Timestamp[i])*time.Millisecond); err != nil {
