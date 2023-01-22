@@ -111,6 +111,7 @@ func run() error {
 		rex.Common.Text(`>stackx`),
 		rex.Common.Text(`>stacky`),
 		rex.Common.Text(`>stackt`),
+		rex.Common.Text(`>dup`),
 	)).MustCompile()
 	stack := stack([]string{})
 	// TODO: assert all characters are used in tokenizing
@@ -206,6 +207,10 @@ func run() error {
 			); err != nil {
 				return err
 			}
+		case ">dup":
+			item := stack.pop()
+			stack.push(item)
+			stack.push(item)
 		default:
 			stack.push(token)
 		}
