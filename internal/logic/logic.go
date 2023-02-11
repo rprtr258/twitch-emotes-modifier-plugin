@@ -174,18 +174,19 @@ func emote(userID string, emoteToken token) (*webp.Animation, error) {
 	case intermediateEmoteToken:
 		emoteID = string(tok)
 	case seventvEmoteToken:
-		seventvEmoteID, err := seventvRepo.GetEmoteID(userID, string(tok))
+		var err error
+		emoteID, err = seventvRepo.GetEmoteID(userID, string(tok))
 		if err != nil {
 			return nil, err
 		}
 
 		if !emotesRepo.IsCached(string(tok)) {
-			data, err := seventvRepo.Download7tvEmote(seventvEmoteID, seventvEmoteID)
+			data, err := seventvRepo.Download7tvEmote(emoteID, emoteID)
 			if err != nil {
 				return nil, err
 			}
 
-			if err := emotesRepo.Save(data, seventvEmoteID); err != nil {
+			if err := emotesRepo.Save(data, emoteID); err != nil {
 				return nil, err
 			}
 		}
@@ -272,7 +273,10 @@ func unaryTokenHandler(
 
 		enc, err := m.Modify()
 		if err != nil {
-			return err
+			return xerr.New(
+				xerr.WithErr(err),
+				xerr.WithField("modifier", modifierName),
+			)
 		}
 
 		if err := emotesRepo.SaveObject(enc, newEmote); err != nil {

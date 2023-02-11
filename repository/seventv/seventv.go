@@ -183,7 +183,11 @@ func (r Repository) GetEmoteSet(userID string) (EmoteSet, error) {
 func (r Repository) GetEmoteID(userID string, emoteName string) (string, error) {
 	user, err := r.GetUser(userID)
 	if err != nil {
-		return "", err
+		return "", xerr.New(
+			xerr.WithMessage("failed getting user, while getting emote id"),
+			xerr.WithErr(err),
+			xerr.WithField("emoteName", emoteName),
+		)
 	}
 
 	var emoteSetID string
