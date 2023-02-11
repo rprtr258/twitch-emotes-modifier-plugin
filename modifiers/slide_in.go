@@ -17,10 +17,10 @@ func (m SlideIn) Modify() (*webp.AnimationEncoder, error) {
 		return nil, err
 	}
 
-	totalTime := m.In.Timestamp[len(m.In.Timestamp)-1]
+	totalTime := float64(m.In.Timestamp[len(m.In.Timestamp)-1])
 
 	for i, frame := range m.In.Image {
-		d := float64(m.In.Timestamp[i]) / float64(totalTime)
+		d := float64(m.In.Timestamp[i]) / totalTime
 		newFrame := shiftedImage{
 			img: frame,
 			dx:  -int(float64(m.In.CanvasWidth) * (1 - d) * (1 - d)),

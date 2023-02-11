@@ -241,6 +241,7 @@ func ProcessQuery(query string) (string, error) {
 		rex.Common.Text(`>gray`),
 		rex.Common.Text(`>shake`),
 		rex.Common.Text(`>slide_in`),
+		rex.Common.Text(`>rave`),
 	)).MustCompile()
 	stack := newStack()
 	// TODO: assert all characters are used in tokenizing
@@ -492,6 +493,18 @@ func ProcessQuery(query string) (string, error) {
 				token,
 				func(x *webp.Animation) modifiers.Modifier {
 					return modifiers.SlideIn{
+						In: x,
+					}
+				},
+			); err != nil {
+				return "", err
+			}
+		case ">rave":
+			if err := unaryTokenHandler(
+				&stack,
+				token,
+				func(x *webp.Animation) modifiers.Modifier {
+					return modifiers.Rave{
 						In: x,
 					}
 				},
