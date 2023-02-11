@@ -238,6 +238,7 @@ func ProcessQuery(query string) (string, error) {
 		rex.Common.Text(`>dscalet`),
 		rex.Common.Text(`>dup`),
 		rex.Common.Text(`>swap`),
+		rex.Common.Text(`>gray`),
 	)).MustCompile()
 	stack := newStack()
 	// TODO: assert all characters are used in tokenizing
@@ -459,6 +460,18 @@ func ProcessQuery(query string) (string, error) {
 			second := stack.pop()
 			stack.push(first)
 			stack.push(second)
+		case ">gray":
+			if err := unaryTokenHandler(
+				&stack,
+				token,
+				func(x *webp.Animation) modifiers.Modifier {
+					return modifiers.Gray{
+						In: x,
+					}
+				},
+			); err != nil {
+				return "", err
+			}
 		default:
 			stack.push(token)
 		}

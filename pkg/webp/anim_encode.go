@@ -81,7 +81,8 @@ func (ae *AnimationEncoder) AddFrame(img image.Image, timestamp time.Duration) e
 	case *image.NRGBA:
 		C.WebPPictureImportRGBA(pic, (*C.uint8_t)(&p.Pix[0]), C.int(p.Stride))
 	default:
-		return errors.New("unsupported image type")
+		pp := imageToNRGBA(p)
+		C.WebPPictureImportRGBA(pic, (*C.uint8_t)(&pp.Pix[0]), C.int(pp.Stride))
 	}
 
 	ts := C.int(ae.lastTimestamp / time.Millisecond)

@@ -404,10 +404,7 @@ func boolToValue(v bool) C.int {
 }
 
 func valueToBool(v C.int) bool {
-	if v > 0 || v < 0 {
-		return true
-	}
-	return false
+	return v != 0
 }
 
 type destinationManager struct {
@@ -455,6 +452,24 @@ func writeWebP(data *C.uint8_t, size C.size_t, pic *C.WebPPicture) C.int {
 	return 1
 }
 
+func imageToNRGBA(im image.Image) *image.NRGBA {
+	bounds := im.Bounds()
+	// colorModel := im.ColorModel()
+	// buf := make([]byte, 8*bounds.Dx()*bounds.Dy())
+	res := image.NewNRGBA(bounds)
+	for x := bounds.Min.X; x < bounds.Max.X; x++ {
+		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+			// r, g, b, a := im.At(x, y).RGBA()
+			res.Set(x, y, im.At(x, y))
+			// buf = binary.BigEndian.AppendUint16(buf, uint16(r))
+			// buf = binary.BigEndian.AppendUint16(buf, uint16(g))
+			// buf = binary.BigEndian.AppendUint16(buf, uint16(b))
+			// buf = binary.BigEndian.AppendUint16(buf, uint16(a))
+		}
+	}
+	return res
+}
+
 // EncodeRGBA encodes and writes image.Image into the writer as WebP.
 // Now supports image.RGBA or image.NRGBA.
 func EncodeRGBA(w io.Writer, img image.Image, c *Config) (err error) {
@@ -491,7 +506,8 @@ func EncodeRGBA(w io.Writer, img image.Image, c *Config) (err error) {
 	case *image.NRGBA:
 		C.WebPPictureImportRGBA(pic, (*C.uint8_t)(&p.Pix[0]), C.int(p.Stride))
 	default:
-		return errors.New("unsupported image type")
+		pp := imageToNRGBA(p)
+		C.WebPPictureImportRGBA(pic, (*C.uint8_t)(&pp.Pix[0]), C.int(pp.Stride))
 	}
 
 	if C.WebPEncode(&c.c, pic) == 0 {
