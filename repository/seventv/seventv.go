@@ -2,10 +2,11 @@ package seventv
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/rprtr258/xerr"
 )
 
 type User struct {
@@ -111,16 +112,30 @@ type Repository struct {
 func (Repository) Download7tvEmote(emoteID, outObjectID string) ([]byte, error) {
 	resp, err := http.Get(fmt.Sprintf("https://cdn.7tv.app/emote/%s/4x", emoteID))
 	if err != nil {
-		return nil, err
+		return nil, xerr.New(
+			xerr.WithErr(err),
+			xerr.WithMessage("failed downloading emote"),
+			xerr.WithField("emoteID", emoteID),
+		)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, xerr.New(
+			xerr.WithMessage("bad status for emote request"),
+			xerr.WithField("statusCode", resp.StatusCode),
+		)
+	}
 
 	// var extension string
 	switch imageFormat := resp.Header.Get("Content-type"); imageFormat {
 	case "image/webp":
 		// extension = "webp"
 	default:
-		return nil, fmt.Errorf("unknown image format: %s", imageFormat)
+		return nil, xerr.New(
+			xerr.WithMessage("unknown image format"),
+			xerr.WithField("imageFormat", imageFormat),
+		)
 	}
 
 	data, err := io.ReadAll(resp.Body)
@@ -134,7 +149,11 @@ func (Repository) Download7tvEmote(emoteID, outObjectID string) ([]byte, error) 
 func (Repository) GetUser(userID string) (User, error) {
 	userResp, err := http.Get(fmt.Sprintf("https://7tv.io/v3/users/%s", userID))
 	if err != nil {
-		return User{}, err
+		return User{}, xerr.New(
+			xerr.WithErr(err),
+			xerr.WithMessage("failed getting 7tv user"),
+			xerr.WithField("userID", userID),
+		)
 	}
 	defer userResp.Body.Close()
 
@@ -174,7 +193,7 @@ func (r Repository) GetEmoteID(userID string, emoteName string) (string, error) 
 		}
 	}
 	if emoteSetID == "" {
-		return "", errors.New("no emote set found for twitch")
+		return "", xerr.New(xerr.WithMessage("no emote set found for twitch"))
 	}
 
 	emoteSet, err := r.GetEmoteSet(emoteSetID)
@@ -188,5 +207,9 @@ func (r Repository) GetEmoteID(userID string, emoteName string) (string, error) 
 		}
 	}
 
-	return "", errors.New("no emote found")
+	return "", xerr.New(
+		xerr.WithMessage("no emote found"),
+		xerr.WithField("userID", userID),
+		xerr.WithField("emoteName", emoteName),
+	)
 }
