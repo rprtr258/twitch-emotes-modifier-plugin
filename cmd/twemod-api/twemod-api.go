@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/internal/logic"
 	"go.uber.org/zap"
 )
@@ -69,6 +70,10 @@ func run() error {
 	defer l.Sync()
 
 	e := echo.New()
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
+	}))
 	assetHandler := http.FileServer(http.FS(os.DirFS(".")))
 	e.GET("/static/*",
 		echo.WrapHandler(http.StripPrefix("/static/", assetHandler)),
