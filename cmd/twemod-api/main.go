@@ -8,8 +8,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/internal/logic"
 	"go.uber.org/zap"
+
+	"github.com/rprtr258/twitch-emotes-modifier-plugin/internal/logic"
 )
 
 type request struct {

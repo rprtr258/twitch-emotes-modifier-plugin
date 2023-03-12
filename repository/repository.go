@@ -3,17 +3,18 @@ package repository
 import (
 	"os"
 
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 	"github.com/rprtr258/xerr"
+
+	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 )
 
 type EmotesRepository struct{}
 
 func objectErr(err error, message, objectID string) error {
 	return xerr.New(
-		xerr.WithMessage(message),
-		xerr.WithErr(err),
-		xerr.WithField("objectID", objectID),
+		xerr.Message(message),
+		xerr.Errors{err},
+		xerr.Fields{"objectID": objectID},
 	)
 }
 
@@ -40,8 +41,8 @@ func (EmotesRepository) LoadObject(objectID string) (*webp.Animation, error) {
 func (EmotesRepository) Save(data []byte, objectID string) error {
 	if err := os.WriteFile(objectID+".webp", data, 0666); err != nil {
 		return xerr.New(
-			xerr.WithErr(err),
-			xerr.WithField("objectID", objectID),
+			xerr.Errors{err},
+			xerr.Fields{"objectID": objectID},
 		)
 	}
 

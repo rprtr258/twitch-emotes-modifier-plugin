@@ -136,8 +136,8 @@ func (s *stack) popNum() float64 {
 		return float64(res)
 	default:
 		xerr.AppendInto(&s.err, xerr.New(
-			xerr.WithMessage("tried to pop num"),
-			xerr.WithField("got", res),
+			xerr.Message("tried to pop num"),
+			xerr.Fields{"got": res},
 		))
 		return 0
 	}
@@ -192,8 +192,8 @@ func emote(userID string, emoteToken token) (*webp.Animation, error) {
 		}
 	default:
 		return nil, xerr.New(
-			xerr.WithMessage("unexpected emote token type"),
-			xerr.WithField("token", tok),
+			xerr.Message("unexpected emote token type"),
+			xerr.Fields{"token": tok},
 		)
 	}
 
@@ -255,8 +255,8 @@ func unaryTokenHandler(
 		stackItem = string(arg)
 	default:
 		return xerr.New(
-			xerr.WithMessage("expected emote on stack"),
-			xerr.WithField("got", arg),
+			xerr.Message("expected emote on stack"),
+			xerr.Fields{"got": arg},
 		)
 	}
 
@@ -274,8 +274,8 @@ func unaryTokenHandler(
 		enc, err := m.Modify()
 		if err != nil {
 			return xerr.New(
-				xerr.WithErr(err),
-				xerr.WithField("modifier", modifierName),
+				xerr.Errors{err},
+				xerr.Fields{"modifier": modifierName},
 			)
 		}
 
@@ -641,14 +641,14 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 				}
 			default:
 				return "", xerr.New(
-					xerr.WithMessage("unknown modifier"),
-					xerr.WithField("token", token),
+					xerr.Message("unknown modifier"),
+					xerr.Fields{"token": token},
 				)
 			}
 		default:
 			return "", xerr.New(
-				xerr.WithMessage("unknown token type"),
-				xerr.WithField("token", token),
+				xerr.Message("unknown token type"),
+				xerr.Fields{"token": token},
 			)
 		}
 	}
@@ -665,8 +665,8 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 	res, ok := top.(intermediateEmoteToken)
 	if !ok {
 		return "", xerr.New(
-			xerr.WithMessage("result is not intermediate token"),
-			xerr.WithField("result", top),
+			xerr.Message("result is not intermediate token"),
+			xerr.Fields{"result": top},
 		)
 	}
 

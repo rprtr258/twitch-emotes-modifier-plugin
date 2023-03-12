@@ -71,13 +71,12 @@ type EmoteSet struct {
 			Listed    bool     `json:"listed"`
 			Animated  bool     `json:"animated"`
 			Owner     struct {
-				ID          string `json:"id"`
-				Username    string `json:"username"`
-				DisplayName string `json:"display_name"`
-				AvatarURL   string `json:"avatar_url"`
-				Style       struct {
-				} `json:"style"`
-				Roles []string `json:"roles"`
+				ID          string   `json:"id"`
+				Username    string   `json:"username"`
+				DisplayName string   `json:"display_name"`
+				AvatarURL   string   `json:"avatar_url"`
+				Style       struct{} `json:"style"`
+				Roles       []string `json:"roles"`
 			} `json:"owner"`
 			Host struct {
 				URL   string `json:"url"`
@@ -96,34 +95,32 @@ type EmoteSet struct {
 	EmoteCount int `json:"emote_count"`
 	Capacity   int `json:"capacity"`
 	Owner      struct {
-		ID          string `json:"id"`
-		Username    string `json:"username"`
-		DisplayName string `json:"display_name"`
-		AvatarURL   string `json:"avatar_url"`
-		Style       struct {
-		} `json:"style"`
-		Roles []string `json:"roles"`
+		ID          string   `json:"id"`
+		Username    string   `json:"username"`
+		DisplayName string   `json:"display_name"`
+		AvatarURL   string   `json:"avatar_url"`
+		Style       struct{} `json:"style"`
+		Roles       []string `json:"roles"`
 	} `json:"owner"`
 }
 
-type Repository struct {
-}
+type Repository struct{}
 
 func (Repository) Download7tvEmote(emoteID, outObjectID string) ([]byte, error) {
 	resp, err := http.Get(fmt.Sprintf("https://cdn.7tv.app/emote/%s/4x", emoteID))
 	if err != nil {
 		return nil, xerr.New(
-			xerr.WithErr(err),
-			xerr.WithMessage("failed downloading emote"),
-			xerr.WithField("emoteID", emoteID),
+			xerr.Errors{err},
+			xerr.Message("failed downloading emote"),
+			xerr.Fields{"emoteID": emoteID},
 		)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, xerr.New(
-			xerr.WithMessage("bad status for emote request"),
-			xerr.WithField("statusCode", resp.StatusCode),
+			xerr.Message("bad status for emote request"),
+			xerr.Fields{"statusCode": resp.StatusCode},
 		)
 	}
 
@@ -133,8 +130,8 @@ func (Repository) Download7tvEmote(emoteID, outObjectID string) ([]byte, error) 
 		// extension = "webp"
 	default:
 		return nil, xerr.New(
-			xerr.WithMessage("unknown image format"),
-			xerr.WithField("imageFormat", imageFormat),
+			xerr.Message("unknown image format"),
+			xerr.Fields{"imageFormat": imageFormat},
 		)
 	}
 
@@ -150,9 +147,9 @@ func (Repository) GetUser(userID string) (User, error) {
 	userResp, err := http.Get(fmt.Sprintf("https://7tv.io/v3/users/%s", userID))
 	if err != nil {
 		return User{}, xerr.New(
-			xerr.WithErr(err),
-			xerr.WithMessage("failed getting 7tv user"),
-			xerr.WithField("userID", userID),
+			xerr.Errors{err},
+			xerr.Message("failed getting 7tv user"),
+			xerr.Fields{"userID": userID},
 		)
 	}
 	defer userResp.Body.Close()
@@ -184,9 +181,9 @@ func (r Repository) GetEmoteID(userID string, emoteName string) (string, error) 
 	user, err := r.GetUser(userID)
 	if err != nil {
 		return "", xerr.New(
-			xerr.WithMessage("failed getting user, while getting emote id"),
-			xerr.WithErr(err),
-			xerr.WithField("emoteName", emoteName),
+			xerr.Message("failed getting user, while getting emote id"),
+			xerr.Errors{err},
+			xerr.Fields{"emoteName": emoteName},
 		)
 	}
 
@@ -197,7 +194,7 @@ func (r Repository) GetEmoteID(userID string, emoteName string) (string, error) 
 		}
 	}
 	if emoteSetID == "" {
-		return "", xerr.New(xerr.WithMessage("no emote set found for twitch"))
+		return "", xerr.New(xerr.Message("no emote set found for twitch"))
 	}
 
 	emoteSet, err := r.GetEmoteSet(emoteSetID)
@@ -212,8 +209,7 @@ func (r Repository) GetEmoteID(userID string, emoteName string) (string, error) 
 	}
 
 	return "", xerr.New(
-		xerr.WithMessage("no emote found"),
-		xerr.WithField("userID", userID),
-		xerr.WithField("emoteName", emoteName),
+		xerr.Message("no emote found"),
+		xerr.Fields{"userID": userID, "emoteName": emoteName},
 	)
 }
