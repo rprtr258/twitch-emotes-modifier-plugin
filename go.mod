@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/hedhyw/rex v0.6.0
 	github.com/labstack/echo/v4 v4.10.0
-	github.com/rprtr258/xerr v0.0.0-20230211150655-bf9b74210eab
+	github.com/rprtr258/xerr v0.0.0-20230211152446-51a97ff3f7ad
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
 )
@@ -27,6 +27,6 @@ require (
 	golang.org/x/net v0.6.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
-	golang.org/x/time v0.2.0 // indirect
+	golang.org/x/time v0.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
