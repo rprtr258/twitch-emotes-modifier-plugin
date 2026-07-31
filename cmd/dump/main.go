@@ -5,22 +5,17 @@ import (
 	"log"
 	"os"
 
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
+	"github.com/gen2brain/webp"
 )
 
-func loadEmote(filename string) (*webp.Animation, error) {
-	data, err := os.ReadFile(filename)
+func loadEmote(filename string) (*webp.WEBP, error) {
+	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	dec, err := webp.NewAnimationDecoder(data)
-	if err != nil {
-		return nil, err
-	}
-	defer dec.Close()
-
-	anim, err := dec.Decode()
+	anim, err := webp.DecodeAll(f)
 	if err != nil {
 		return nil, err
 	}
@@ -43,10 +38,10 @@ func run() error {
 		return err
 	}
 
-	fmt.Println("Dimensions:", img.CanvasWidth, "*", img.CanvasHeight)
-	fmt.Println("Frames:", img.FrameCount)
-	fmt.Println("Durations:", durations(img.Timestamp))
-	fmt.Println("Timestamps:", img.Timestamp)
+	fmt.Println("Dimensions:", img.Image[0].Bounds().Dx(), "*", img.Image[0].Bounds().Dy())
+	fmt.Println("Frames:", len(img.Image))
+	fmt.Println("Durations:", durations(img.Delay))
+	fmt.Println("Timestamps:", img.Delay)
 	return nil
 }
 

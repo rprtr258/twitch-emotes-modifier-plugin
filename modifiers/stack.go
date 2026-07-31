@@ -3,14 +3,13 @@ package modifiers
 import (
 	"fmt"
 	"image"
-	"time"
 
+	"github.com/gen2brain/webp"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/internal"
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 )
 
 type StackX struct {
-	First, Second *webp.Animation
+	First, Second *webp.WEBP
 }
 
 func (m StackX) stack(a, b *image.RGBA) *image.RGBA {
@@ -28,35 +27,35 @@ func (m StackX) stack(a, b *image.RGBA) *image.RGBA {
 }
 
 // TODO: fix animation slowdown for some reason for >dup>revt>stackx and >dup>revt>stacky
-func (m StackX) Modify() (*webp.AnimationEncoder, error) {
-	if m.First.CanvasHeight != m.Second.CanvasHeight {
-		return nil, fmt.Errorf("unequal heights on x-stack: %d and %d", m.First.CanvasHeight, m.Second.CanvasHeight)
+func (m StackX) Modify() (*webp.WEBP, error) {
+	first := internal.RGBA(m.First.Image[0])
+	second := internal.RGBA(m.Second.Image[0])
+	if first.Rect.Dy() != second.Rect.Dy() {
+		return nil, fmt.Errorf("unequal heights on x-stack: %d and %d", first.Rect.Dy(), second.Rect.Dy())
 	}
 
-	enc, err := webp.NewAnimationEncoder(m.First.CanvasWidth+m.Second.CanvasWidth, m.First.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
+	mergedTimestamps := internal.MergeTimeSeries(m.First.Delay, m.Second.Delay)
 
-	mergedTimestamps := internal.MergeTimeSeries(m.First.Timestamp, m.Second.Timestamp)
-
+	images := make([]image.Image, len(mergedTimestamps))
+	delays := make([]int, len(mergedTimestamps))
 	// TODO: cache same frames stacked
-	for _, ts := range mergedTimestamps {
-		frame := m.stack(
-			m.First.Image[ts.Frames[0]],
-			m.Second.Image[ts.Frames[1]],
+	for i, ts := range mergedTimestamps {
+		images[i] = m.stack(
+			internal.RGBA(m.First.Image[ts.Frames[0]]),
+			internal.RGBA(m.Second.Image[ts.Frames[1]]),
 		)
-		if err := enc.AddFrame(frame, time.Duration(ts.Timestamp)*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
+		delays[i] = ts.Timestamp
 	}
 
-	return enc, nil
+	return &webp.WEBP{
+		Image:     images,
+		Delay:     delays,
+		LoopCount: m.First.LoopCount * m.Second.LoopCount,
+	}, nil
 }
 
 type StackY struct {
-	First, Second *webp.Animation
+	First, Second *webp.WEBP
 }
 
 func (m StackY) stack(a, b *image.RGBA) *image.RGBA {
@@ -71,58 +70,51 @@ func (m StackY) stack(a, b *image.RGBA) *image.RGBA {
 	}
 }
 
-func (m StackY) Modify() (*webp.AnimationEncoder, error) {
-	if m.First.CanvasWidth != m.Second.CanvasWidth {
-		return nil, fmt.Errorf("unequal widths on y-stack: %d and %d", m.First.CanvasWidth, m.Second.CanvasWidth)
+func (m StackY) Modify() (*webp.WEBP, error) {
+	first := internal.RGBA(m.First.Image[0])
+	second := internal.RGBA(m.Second.Image[0])
+	if first.Rect.Dx() != second.Rect.Dx() {
+		return nil, fmt.Errorf("unequal widths on y-stack: %d and %d", first.Rect.Dx(), second.Rect.Dx())
 	}
 
-	enc, err := webp.NewAnimationEncoder(m.First.CanvasWidth, m.First.CanvasHeight+m.Second.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	mergedTimestamps := internal.MergeTimeSeries(m.First.Timestamp, m.Second.Timestamp)
+	mergedTimestamps := internal.MergeTimeSeries(m.First.Delay, m.Second.Delay)
 
 	// TODO: cache same frames stacked
-	for _, ts := range mergedTimestamps {
-		frame := m.stack(m.First.Image[ts.Frames[0]], m.Second.Image[ts.Frames[1]])
-		if err := enc.AddFrame(frame, time.Duration(ts.Timestamp)*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
+	images := make([]image.Image, len(mergedTimestamps))
+	delays := make([]int, len(mergedTimestamps))
+	for i, ts := range mergedTimestamps {
+		images[i] = m.stack(internal.RGBA(m.First.Image[ts.Frames[0]]), internal.RGBA(m.Second.Image[ts.Frames[1]]))
+		delays[i] = ts.Timestamp
 	}
 
-	return enc, nil
+	return &webp.WEBP{
+		Image:     images,
+		Delay:     delays,
+		LoopCount: m.First.LoopCount * m.Second.LoopCount,
+	}, nil
 }
 
 type StackT struct {
-	First, Second *webp.Animation
+	First, Second *webp.WEBP
 }
 
-func (m StackT) append(enc *webp.AnimationEncoder, img *webp.Animation, offset int) error {
-	for i, frame := range img.Image {
-		if err := enc.AddFrame(frame, time.Duration(img.Timestamp[i]+offset)*time.Millisecond); err != nil {
-			enc.Close()
-			return err
-		}
+func (m StackT) Modify() (*webp.WEBP, error) {
+	images := make([]image.Image, 0, len(m.First.Image)+len(m.Second.Image))
+	delays := make([]int, 0, len(m.First.Image)+len(m.Second.Image))
+
+	offset := m.First.Delay[len(m.First.Delay)-1]
+	for i, frame := range m.First.Image {
+		images = append(images, frame)
+		delays = append(delays, m.First.Delay[i])
+	}
+	for i, frame := range m.Second.Image {
+		images = append(images, frame)
+		delays = append(delays, offset+m.Second.Delay[i])
 	}
 
-	return nil
-}
-
-func (m StackT) Modify() (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(m.First.CanvasWidth, m.First.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := m.append(enc, m.First, 0); err != nil {
-		return nil, err
-	}
-
-	if err := m.append(enc, m.Second, m.First.Timestamp[m.First.FrameCount-1]); err != nil {
-		return nil, err
-	}
-
-	return enc, nil
+	return &webp.WEBP{
+		Image:     images,
+		Delay:     delays,
+		LoopCount: m.First.LoopCount + m.Second.LoopCount,
+	}, nil
 }

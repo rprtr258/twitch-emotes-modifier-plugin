@@ -4,11 +4,11 @@ import (
 	"image"
 	"image/color"
 
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
+	"github.com/gen2brain/webp"
 )
 
 type Modifier interface {
-	Modify() (*webp.AnimationEncoder, error)
+	Modify() (*webp.WEBP, error)
 }
 
 type shiftedImage struct {

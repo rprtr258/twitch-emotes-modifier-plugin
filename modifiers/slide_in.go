@@ -1,37 +1,38 @@
 package modifiers
 
 import (
-	"time"
+	"image"
 
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
+	"github.com/gen2brain/webp"
+
+	"github.com/rprtr258/twitch-emotes-modifier-plugin/internal"
 )
 
 type SlideIn struct {
 	// TODO: embed?
-	In *webp.Animation
+	In *webp.WEBP
 }
 
-func (m SlideIn) Modify() (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(m.In.CanvasWidth, m.In.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
+func (m SlideIn) Modify() (*webp.WEBP, error) {
+	timestamps := internal.DelaysToTimestamps(m.In.Delay)
+	totalTime := float64(timestamps[len(timestamps)-1])
 
-	totalTime := float64(m.In.Timestamp[len(m.In.Timestamp)-1])
-
+	width := internal.RGBA(m.In.Image[0]).Rect.Dx()
+	images := make([]image.Image, len(m.In.Image))
 	for i, frame := range m.In.Image {
-		d := float64(m.In.Timestamp[i]) / totalTime
+		d := float64(timestamps[i]) / totalTime
 		newFrame := shiftedImage{
 			img: frame,
-			dx:  -int(float64(m.In.CanvasWidth) * (1 - d) * (1 - d)),
+			dx:  -int(float64(width) * (1 - d) * (1 - d)),
 			dy:  0,
 		}
 
-		if err := enc.AddFrame(newFrame, time.Duration(m.In.Timestamp[i])*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
+		images[i] = newFrame
 	}
 
-	return enc, nil
+	return &webp.WEBP{
+		Image:     images,
+		Delay:     m.In.Delay,
+		LoopCount: m.In.LoopCount,
+	}, nil
 }

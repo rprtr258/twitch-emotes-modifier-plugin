@@ -3,9 +3,8 @@ package modifiers
 import (
 	"image"
 	"image/color"
-	"time"
 
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
+	"github.com/gen2brain/webp"
 )
 
 type grayscaleImage struct {
@@ -31,23 +30,18 @@ func (im grayscaleImage) At(x, y int) color.Color {
 
 type Gray struct {
 	// TODO: embed?
-	In *webp.Animation
+	In *webp.WEBP
 }
 
-func (m Gray) Modify() (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(m.In.CanvasWidth, m.In.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-
+func (m Gray) Modify() (*webp.WEBP, error) {
+	images := make([]image.Image, len(m.In.Image))
 	for i, frame := range m.In.Image {
-		res := grayscaleImage{frame}
-
-		if err := enc.AddFrame(res, time.Duration(m.In.Timestamp[i])*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
+		images[i] = grayscaleImage{frame}
 	}
 
-	return enc, nil
+	return &webp.WEBP{
+		Image:     images,
+		Delay:     m.In.Delay,
+		LoopCount: m.In.LoopCount,
+	}, nil
 }

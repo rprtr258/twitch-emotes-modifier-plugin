@@ -1,8 +1,9 @@
 module github.com/rprtr258/twitch-emotes-modifier-plugin
 
-go 1.19
+go 1.23
 
 require (
+	github.com/gen2brain/webp v0.6.4
 	github.com/hedhyw/rex v0.6.0
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/rprtr258/xerr v0.1.4
@@ -14,6 +15,7 @@ replace github.com/rprtr258/xerr v0.0.0-20230211150655-bf9b74210eab => ../xerr
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/ebitengine/purego v0.10.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/labstack/gommon v0.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

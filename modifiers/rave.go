@@ -5,9 +5,8 @@ import (
 	"image"
 	"image/color"
 	"math"
-	"time"
 
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
+	"github.com/gen2brain/webp"
 )
 
 func rgb2hsv(r float64, g float64, b float64) (h float64, s float64, v float64) {
@@ -142,28 +141,28 @@ func (im hueImage) At(x, y int) color.Color {
 
 type Rave struct {
 	// TODO: embed?
-	In *webp.Animation
+	In *webp.WEBP
 }
 
-func (m Rave) Modify() (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(m.In.CanvasWidth, m.In.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
+func (m Rave) Modify() (*webp.WEBP, error) {
+	totalTime := 0
+	for _, d := range m.In.Delay {
+		totalTime += d
 	}
 
-	totalTime := float64(m.In.Timestamp[len(m.In.Timestamp)-1])
-
+	images := make([]image.Image, len(m.In.Image))
 	for i, frame := range m.In.Image {
 		newFrame := hueImage{
 			img: frame,
-			hue: 360 * float64(m.In.Timestamp[i]) / totalTime,
+			hue: 360 * float64(m.In.Delay[i]) / float64(totalTime), // TODO: prefix sum instead of just [i]
 		}
 
-		if err := enc.AddFrame(newFrame, time.Duration(m.In.Timestamp[i])*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
+		images[i] = newFrame
 	}
 
-	return enc, nil
+	return &webp.WEBP{
+		Image:     images,
+		Delay:     m.In.Delay,
+		LoopCount: m.In.LoopCount,
+	}, nil
 }

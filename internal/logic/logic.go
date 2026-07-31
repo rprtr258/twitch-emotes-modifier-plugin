@@ -9,12 +9,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gen2brain/webp"
 	"github.com/hedhyw/rex/pkg/rex"
-
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/modifiers"
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/repository"
 	"github.com/rprtr258/twitch-emotes-modifier-plugin/repository/seventv"
 )
@@ -165,7 +164,7 @@ func bench(message string) func() {
 	}
 }
 
-func emote(userID string, emoteToken token) (*webp.Animation, error) {
+func emote(userID string, emoteToken token) (*webp.WEBP, error) {
 	var emotesRepo repository.EmotesRepository
 	var seventvRepo seventv.Repository
 
@@ -204,7 +203,7 @@ func linearTokenHandler(
 	userID string,
 	stack *stack,
 	modifierName modifierToken,
-	construct func(float64, *webp.Animation) modifiers.Modifier,
+	construct func(float64, *webp.WEBP) modifiers.Modifier,
 ) error {
 	var emotesRepo repository.EmotesRepository
 
@@ -242,7 +241,7 @@ func unaryTokenHandler(
 	userID string,
 	stack *stack,
 	modifierName modifierToken,
-	construct func(*webp.Animation) modifiers.Modifier,
+	construct func(*webp.WEBP) modifiers.Modifier,
 ) error {
 	var emotesRepo repository.EmotesRepository
 
@@ -293,7 +292,7 @@ func binaryTokenHandler(
 	userID string,
 	stack *stack,
 	modifierName modifierToken,
-	construct func(a, b *webp.Animation) modifiers.Modifier,
+	construct func(a, b *webp.WEBP) modifiers.Modifier,
 ) error {
 	var emotesRepo repository.EmotesRepository
 
@@ -362,7 +361,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(in *webp.Animation) modifiers.Modifier {
+					func(in *webp.WEBP) modifiers.Modifier {
 						return modifiers.ReverseX{
 							In: in,
 						}
@@ -375,7 +374,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(in *webp.Animation) modifiers.Modifier {
+					func(in *webp.WEBP) modifiers.Modifier {
 						return modifiers.ReverseY{
 							In: in,
 						}
@@ -388,7 +387,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(in *webp.Animation) modifiers.Modifier {
+					func(in *webp.WEBP) modifiers.Modifier {
 						return modifiers.ReverseT{
 							In: in,
 						}
@@ -401,7 +400,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(a, b *webp.Animation) modifiers.Modifier {
+					func(a, b *webp.WEBP) modifiers.Modifier {
 						return modifiers.Over{
 							First:  a,
 							Second: b,
@@ -415,7 +414,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(a, b *webp.Animation) modifiers.Modifier {
+					func(a, b *webp.WEBP) modifiers.Modifier {
 						return modifiers.StackX{
 							First:  a,
 							Second: b,
@@ -429,7 +428,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(a, b *webp.Animation) modifiers.Modifier {
+					func(a, b *webp.WEBP) modifiers.Modifier {
 						return modifiers.StackY{
 							First:  a,
 							Second: b,
@@ -443,7 +442,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(a, b *webp.Animation) modifiers.Modifier {
+					func(a, b *webp.WEBP) modifiers.Modifier {
 						return modifiers.StackT{
 							First:  a,
 							Second: b,
@@ -457,7 +456,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(coeff float64, x *webp.Animation) modifiers.Modifier {
+					func(coeff float64, x *webp.WEBP) modifiers.Modifier {
 						return modifiers.ScaleX{
 							In:    x,
 							Scale: coeff,
@@ -471,7 +470,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(coeff float64, x *webp.Animation) modifiers.Modifier {
+					func(coeff float64, x *webp.WEBP) modifiers.Modifier {
 						return modifiers.ScaleY{
 							In:    x,
 							Scale: coeff,
@@ -485,7 +484,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(coeff float64, x *webp.Animation) modifiers.Modifier {
+					func(coeff float64, x *webp.WEBP) modifiers.Modifier {
 						return modifiers.ScaleT{
 							In:    x,
 							Scale: coeff,
@@ -499,7 +498,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(x *webp.Animation) modifiers.Modifier {
+					func(x *webp.WEBP) modifiers.Modifier {
 						return modifiers.ScaleX{
 							In:    x,
 							Scale: 2.0,
@@ -513,7 +512,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(x *webp.Animation) modifiers.Modifier {
+					func(x *webp.WEBP) modifiers.Modifier {
 						return modifiers.ScaleY{
 							In:    x,
 							Scale: 2.0,
@@ -527,7 +526,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(x *webp.Animation) modifiers.Modifier {
+					func(x *webp.WEBP) modifiers.Modifier {
 						return modifiers.ScaleT{
 							In:    x,
 							Scale: 2.0,
@@ -541,7 +540,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(x *webp.Animation) modifiers.Modifier {
+					func(x *webp.WEBP) modifiers.Modifier {
 						return modifiers.ScaleX{
 							In:    x,
 							Scale: 0.5,
@@ -555,7 +554,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(x *webp.Animation) modifiers.Modifier {
+					func(x *webp.WEBP) modifiers.Modifier {
 						return modifiers.ScaleY{
 							In:    x,
 							Scale: 0.5,
@@ -569,7 +568,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(x *webp.Animation) modifiers.Modifier {
+					func(x *webp.WEBP) modifiers.Modifier {
 						return modifiers.ScaleT{
 							In:    x,
 							Scale: 0.5,
@@ -592,7 +591,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(x *webp.Animation) modifiers.Modifier {
+					func(x *webp.WEBP) modifiers.Modifier {
 						return modifiers.Gray{
 							In: x,
 						}
@@ -605,7 +604,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(x *webp.Animation) modifiers.Modifier {
+					func(x *webp.WEBP) modifiers.Modifier {
 						return modifiers.Shake{
 							In: x,
 						}
@@ -618,7 +617,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(x *webp.Animation) modifiers.Modifier {
+					func(x *webp.WEBP) modifiers.Modifier {
 						return modifiers.SlideIn{
 							In: x,
 						}
@@ -631,7 +630,7 @@ func ProcessQuery(userID string, tokens []token) (intermediateEmoteToken, error)
 					userID,
 					&stack,
 					token,
-					func(x *webp.Animation) modifiers.Modifier {
+					func(x *webp.WEBP) modifiers.Modifier {
 						return modifiers.Rave{
 							In: x,
 						}

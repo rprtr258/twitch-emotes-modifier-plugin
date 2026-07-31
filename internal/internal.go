@@ -1,5 +1,10 @@
 package internal
 
+import (
+	"image"
+	"iter"
+)
+
 type mergedTimestamp struct {
 	Timestamp int
 	Frames    []int
@@ -99,4 +104,31 @@ func ReverseTimestamps(timestamps []int) []int {
 		res[n-2]+timestamps[0],
 	)
 	return res
+}
+
+func DelaysToTimestamps(delays []int) []int {
+	timestamps := make([]int, len(delays))
+	sum := 0
+	for i, d := range delays {
+		sum += d
+		timestamps[i] = sum
+	}
+	return timestamps
+}
+
+// RGBA returns the frame as an RGBA image.
+// webp.DecodeAll decodes every frame as *image.RGBA,
+// so this assertion always holds for emotes loaded via the repository.
+func RGBA(img image.Image) *image.RGBA {
+	return img.(*image.RGBA)
+}
+
+func ToRGBAs(frames []image.Image) iter.Seq2[int, *image.RGBA] {
+	return func(yield func(int, *image.RGBA) bool) {
+		for i, frame := range frames {
+			if !yield(i, RGBA(frame)) {
+				return
+			}
+		}
+	}
 }

@@ -1,35 +1,38 @@
 package modifiers
 
 import (
+	"image"
 	"math/rand"
-	"time"
 
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
+	"github.com/gen2brain/webp"
+
+	"github.com/rprtr258/twitch-emotes-modifier-plugin/internal"
 )
 
 type Shake struct {
 	// TODO: embed?
-	In *webp.Animation
+	In *webp.WEBP
 }
 
-func (m Shake) Modify() (*webp.AnimationEncoder, error) {
-	enc, err := webp.NewAnimationEncoder(m.In.CanvasWidth, m.In.CanvasHeight, 0, 0)
-	if err != nil {
-		return nil, err
-	}
+func (m Shake) Modify() (*webp.WEBP, error) {
+	first := internal.RGBA(m.In.Image[0])
+	width := first.Rect.Dx()
+	height := first.Rect.Dy()
 
+	images := make([]image.Image, len(m.In.Image))
 	for i, frame := range m.In.Image {
 		newFrame := shiftedImage{
 			img: frame,
-			dx:  int(rand.Intn(m.In.CanvasWidth) - m.In.CanvasWidth/2),
-			dy:  int(rand.Intn(m.In.CanvasHeight) - m.In.CanvasHeight/2),
+			dx:  int(rand.Intn(width) - width/2),
+			dy:  int(rand.Intn(height) - height/2),
 		}
 
-		if err := enc.AddFrame(newFrame, time.Duration(m.In.Timestamp[i])*time.Millisecond); err != nil {
-			enc.Close()
-			return nil, err
-		}
+		images[i] = newFrame
 	}
 
-	return enc, nil
+	return &webp.WEBP{
+		Image:     images,
+		Delay:     m.In.Delay,
+		LoopCount: m.In.LoopCount,
+	}, nil
 }

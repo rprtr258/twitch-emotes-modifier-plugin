@@ -1,11 +1,12 @@
 package repository
 
 import (
+	"bytes"
 	"os"
 
 	"github.com/rprtr258/xerr"
 
-	"github.com/rprtr258/twitch-emotes-modifier-plugin/pkg/webp"
+	"github.com/gen2brain/webp"
 )
 
 type EmotesRepository struct{}
@@ -18,21 +19,16 @@ func objectErr(err error, message, objectID string) error {
 	)
 }
 
-func (EmotesRepository) LoadObject(objectID string) (*webp.Animation, error) {
-	data, err := os.ReadFile(objectID + ".webp")
+func (EmotesRepository) LoadObject(objectID string) (*webp.WEBP, error) {
+	data, err := os.Open(objectID + ".webp")
 	if err != nil {
 		return nil, objectErr(err, "failed loading object", objectID)
 	}
+	defer data.Close()
 
-	dec, err := webp.NewAnimationDecoder(data)
+	anim, err := webp.DecodeAll(data)
 	if err != nil {
 		return nil, objectErr(err, "failed creating decoder", objectID)
-	}
-	defer dec.Close()
-
-	anim, err := dec.Decode()
-	if err != nil {
-		return nil, objectErr(err, "failed decoding object", objectID)
 	}
 
 	return anim, nil
@@ -49,15 +45,13 @@ func (EmotesRepository) Save(data []byte, objectID string) error {
 	return nil
 }
 
-func (r EmotesRepository) SaveObject(enc *webp.AnimationEncoder, objectID string) error {
-	defer enc.Close()
-
-	data, err := enc.Assemble()
-	if err != nil {
+func (r EmotesRepository) SaveObject(enc *webp.WEBP, objectID string) error {
+	var data bytes.Buffer
+	if err := webp.EncodeAll(&data, enc); err != nil {
 		return err
 	}
 
-	if err := r.Save(data, objectID); err != nil {
+	if err := r.Save(data.Bytes(), objectID); err != nil {
 		return err
 	}
 
